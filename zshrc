@@ -39,4 +39,6 @@ alias lgit='lazygit'
 
 alias spotify='spotify &disown'
 alias discord='discord &> /dev/null &disown'
+
 alias rofi='rofi -show drun -theme ~/.config/rofi/launchers/type-1/style-7.rasi'
+alias powermenu='~/.config/rofi/applets/bin/powermenu.sh'

@@ -24,23 +24,23 @@ fi
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
-  option_1=" Lock"
-  option_2=" Logout"
-  option_3=" Suspend"
-  option_4=" Hibernate"
-  option_5=" Reboot"
-  option_6=" Shutdown"
-  yes=' Yes'
-  no=' No'
+  option_1="󰌾 Lock"
+  option_2="󰍃 Logout"
+  option_3="󰒲 Suspend"
+  option_4="󰤄 Hibernate"
+  option_5="󰑓 Reboot"
+  option_6="󰐥 Shutdown"
+  yes=' Yes'
+  no=' No'
 else
-  option_1=""
-  option_2=""
-  option_3=""
-  option_4=""
-  option_5=""
-  option_6=""
-  yes=''
-  no=''
+  option_1="󰌾"
+  option_2="󰍃"
+  option_3="󰒲"
+  option_4="󰤄"
+  option_5="󰑓"
+  option_6="󰐥"
+  yes=''
+  no=''
 fi
 
 # Rofi CMD
@@ -68,7 +68,7 @@ confirm_cmd() {
     -theme-str 'textbox {horizontal-align: 0.5;}' \
     -dmenu \
     -p 'Confirmation' \
-    -mesg 'Are you Sure?' \
+    -mesg 'Are You Sure?' \
     -theme ${theme}
 }
 
@@ -92,9 +92,9 @@ run_cmd() {
   if [[ "$1" == '--opt1' ]]; then
     hyprlock
   elif [[ "$1" == '--opt2' ]]; then
-    confirm_run 'kill -9 -1'
+    confirm_run 'hyprctl dispatch exit'
   elif [[ "$1" == '--opt3' ]]; then
-    confirm_run 'amixer set Master mute' 'systemctl suspend'
+    confirm_run 'wpctl set-mute @DEFAULT_AUDIO_SINK@ 1' 'systemctl suspend'
   elif [[ "$1" == '--opt4' ]]; then
     confirm_run 'systemctl hibernate'
   elif [[ "$1" == '--opt5' ]]; then
