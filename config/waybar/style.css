@@ -158,14 +158,14 @@ window#waybar {
 }
 
 #clock:hover,
-#battery:hover,
 #pulseaudio:hover,
 #custom-light:hover,
 #custom-temperature:hover ,
 #backlight:hover,
 #cpu:hover,
 #memory:hover,
-#idle_inhibitor:hover {
+#idle_inhibitor:hover,
+#custom-swaync:hover {
   padding-top: 8px;
   background: @surface_container_high;
 }
