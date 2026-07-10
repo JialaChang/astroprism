@@ -13,8 +13,9 @@
         // "hyprland/window"
     ],
     "modules-center": [
-        "custom/temperature",
-        "custom/light",
+        // "custom/temperature",
+        // "custom/light",
+        "custom/theme-toggle",
         "hyprland/workspaces",
         "backlight",
         "pulseaudio"
@@ -38,6 +39,13 @@
             "memory",
             "idle_inhibitor"
         ]
+    },
+    "custom/theme-toggle": {
+        "exec": "~/.config/waybar/scripts/theme-toggle.sh status",
+        "on-click": "~/.config/waybar/scripts/theme-toggle.sh toggle",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": true
     },
     "idle_inhibitor": {
         "format": "{icon}",

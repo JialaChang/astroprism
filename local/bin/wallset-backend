@@ -14,9 +14,14 @@ awww img "$FILE" \
   --transition-fps 60 \
   --transition-step 50
 
-matugen image "$FILE"
+MODE_FILE="$HOME/.cache/theme_mode"
+MODE=$([ -f "$MODE_FILE" ] && cat "$MODE_FILE" || echo "dark")
+
+matugen image "$FILE" --mode "$MODE" --prefer saturation
 echo "$FILE" >~/.cache/last_wallpaper
-pkill waybar && waybar &
+gsettings set org.gnome.desktop.interface color-scheme "prefer-$MODE"
+pkill waybar
+setsid -f waybar >/dev/null 2>&1
 swaync-client -rs &
 
 notify-send "Wallpaper already change into $(basename "$FILE")"
