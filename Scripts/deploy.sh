@@ -46,7 +46,6 @@ backup_all() {
   backup "$HOME/.config/waybar"
   backup "$HOME/.config/matugen"
   backup "$HOME/.config/rofi"
-  backup "$HOME/.config/wallpapers"
 
   backup "$HOME/.config/starship.toml"
 
