@@ -1,7 +1,7 @@
 {
     "layer": "top",
     "font": "JetBrains Nerd Font 10",
-    "margin": "8 8 12 12",
+    "margin": "8 12 0 12",
     "reload_style_on_change": true,
     "on-sigusr1": "hide",
     "on-sigusr2": "show",

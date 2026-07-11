@@ -59,7 +59,7 @@ window#waybar {
 }
 
 #custom-theme-toggle {
-  border-top: 3px solid @secondary;
+  border-top: 3px solid @primary;
   color: @secondary;
   font-weight: bold;
 }
@@ -122,8 +122,8 @@ window#waybar {
 }
 
 #mpris {
-  border-top: 3px solid @blue;
-  color: @blue;
+  border-top: 3px solid @primary;
+  color: @primary;
   font-weight: bold;
 }
 

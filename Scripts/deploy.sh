@@ -64,7 +64,6 @@ deploy_all() {
   deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar"
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen"
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi"
-  deploy "$ROOT_DIR/config/wallpapers" "$HOME/.config/wallpapers"
 
   deploy "$ROOT_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 

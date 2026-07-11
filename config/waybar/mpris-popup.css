@@ -46,7 +46,7 @@ window.mpris-popup {
 
 .mpris-seek highlight {
   border-radius: 999px;
-  background-color: @blue;
+  background-color: @primary;
 }
 
 .mpris-seek slider {
@@ -54,6 +54,6 @@ window.mpris-popup {
   min-height: 10px;
   margin: -4px 0;
   border-radius: 999px;
-  background-color: @blue;
+  background-color: @primary;
   box-shadow: none;
 }
