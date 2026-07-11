@@ -41,6 +41,7 @@ window#waybar {
 #custom-temperature,
 #custom-theme-toggle,
 #cava,
+#mpris,
 #workspaces {
   background: @surface_container;
   color: @on_surface;
@@ -120,6 +121,18 @@ window#waybar {
   font-weight: bold;
 }
 
+#mpris {
+  border-top: 3px solid @blue;
+  color: @blue;
+  font-weight: bold;
+}
+
+#mpris.paused {
+  color: @on_surface_variant;
+  border-top-color: @outline_variant;
+  font-weight: bold;
+}
+
 #network {
   border-top: 3px solid @secondary;
   font-weight: bold;
@@ -173,8 +186,8 @@ window#waybar {
 #cpu:hover,
 #memory:hover,
 #idle_inhibitor:hover,
-#custom-swaync:hover {
-  padding-top: 8px;
+#custom-swaync:hover,
+#mpris:hover {
   background: @surface_container_high;
 }
 

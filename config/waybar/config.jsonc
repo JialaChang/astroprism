@@ -8,14 +8,14 @@
     "modules-left": [
         "custom/nix",
         "clock",
-        "network"
+        "network",
+        "mpris"
         // "bluetooth"
         // "hyprland/window"
     ],
     "modules-center": [
         // "custom/temperature",
         // "custom/light",
-        "custom/theme-toggle",
         "hyprland/workspaces",
         // "backlight",
         "pulseaudio"
@@ -23,6 +23,7 @@
     "modules-right": [
         // "cava",
         "group/sysstats",
+        "custom/theme-toggle",
         // "battery",
         "custom/swaync",
         "tray"
@@ -126,6 +127,20 @@
     "hyprland/window": {
         "format": "{}",
         "separate-outputs": true
+    },
+    "mpris": {
+        "format": "{player_icon}  {dynamic}",
+        "format-paused": " <i>{dynamic}</i>",
+        "player-icons": {
+            "default": "",
+            "spotify": "",
+            "firefox": ""
+        },
+        "max-length": 20,
+        "min-length": 20,
+        "tooltip": false,
+        "on-click": "~/.config/waybar/scripts/mpris-popup.py",
+        "on-click-right": "playerctl play-pause"
     },
     "pulseaudio": {
         "format": "{volume}% {icon}",
