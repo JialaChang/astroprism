@@ -39,6 +39,7 @@ window#waybar {
 #custom-swaync,
 #custom-light,
 #custom-temperature,
+#custom-theme-toggle,
 #cava,
 #workspaces {
   background: @surface_container;
@@ -54,6 +55,12 @@ window#waybar {
   border-top: 3px solid @primary;
   color: @primary;
   font-size: 18px;
+}
+
+#custom-theme-toggle {
+  border-top: 3px solid @secondary;
+  color: @secondary;
+  font-weight: bold;
 }
 
 #clock {
@@ -121,7 +128,7 @@ window#waybar {
 #custom-light,
 #custom-temperature,
 #backlight {
-  border-top: 3px solid @tertiary;
+  border-top: 3px solid @secondary;
   font-weight: bold;
 }
 
@@ -158,14 +165,15 @@ window#waybar {
 }
 
 #clock:hover,
-#battery:hover,
 #pulseaudio:hover,
 #custom-light:hover,
 #custom-temperature:hover ,
+#custom-theme-toggle:hover,
 #backlight:hover,
 #cpu:hover,
 #memory:hover,
-#idle_inhibitor:hover {
+#idle_inhibitor:hover,
+#custom-swaync:hover {
   padding-top: 8px;
   background: @surface_container_high;
 }
