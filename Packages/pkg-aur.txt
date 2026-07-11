@@ -1,9 +1,9 @@
 claude-code
 clipse
-libcava
 matugen-bin
 oh-my-posh
+sddm-astronaut-theme
 spotify
 visual-studio-code-bin
 yay
-# Exported on 2026-07-03_21:21
+# Exported on 2026-07-11_16:13
