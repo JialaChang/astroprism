@@ -3,7 +3,9 @@
 # Author: JialaChang & Claude
 # Floating GTK popup for waybar's mpris module (click-to-open, since waybar
 # has no hover-exec): shows cover art, title/artist, a seek bar, and
-# prev/play-pause/next controls, driven through playerctl.
+# prev/play-pause/next controls, driven through playerctl. Refreshes are
+# triggered by D-Bus PropertiesChanged signals from playerctld rather than
+# polling; only the seek bar's per-second advance is a local timer.
 
 import os
 import re
@@ -17,8 +19,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
+gi.require_version("Gio", "2.0")
 gi.require_version("GtkLayerShell", "0.1")
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GtkLayerShell, Pango
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, GtkLayerShell, Pango
 
 PIDFILE = "/tmp/waybar-mpris-popup.pid"
 CSS_PATH = os.path.expanduser("~/.config/waybar/mpris-popup.css")
@@ -30,6 +33,12 @@ POPUP_HEIGHT = 190
 POPUP_TOP_MARGIN = 0
 # Approximate screen-left offset of the mpris module in modules-left
 POPUP_LEFT_MARGIN = 230
+
+# playerctld proxies whichever player is currently active under one fixed
+# bus name, so we can subscribe to it without tracking players ourselves.
+MPRIS_BUS_NAME = "org.mpris.MediaPlayer2.playerctld"
+MPRIS_OBJECT_PATH = "/org/mpris/MediaPlayer2"
+DBUS_PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
 
 
 def playerctl(*args):
@@ -67,6 +76,14 @@ class Popup(Gtk.Window):
         self.set_resizable(False)
         self.set_size_request(POPUP_WIDTH, POPUP_HEIGHT)
         self.get_style_context().add_class("mpris-popup")
+
+        # Needed so the CSS background's alpha channel (and the area outside
+        # the rounded corners) actually renders as transparent instead of an
+        # opaque box.
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual() if screen else None
+        if visual:
+            self.set_visual(visual)
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         outer.set_margin_top(14)
@@ -141,9 +158,40 @@ class Popup(Gtk.Window):
         self.connect("leave-notify-event", lambda *_: self._start_hide_timer())
 
         self._hide_timer = None
+        self._status = ""
+        self._position = 0.0
+        self._length = 0.0
+
         self.refresh()
-        GLib.timeout_add(1000, self._poll)
+        self._subscribe_dbus()
+        GLib.timeout_add(1000, self._tick)
         self._start_hide_timer()
+
+    def _subscribe_dbus(self):
+        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        bus.signal_subscribe(
+            MPRIS_BUS_NAME,
+            DBUS_PROPERTIES_IFACE,
+            "PropertiesChanged",
+            MPRIS_OBJECT_PATH,
+            None,
+            Gio.DBusSignalFlags.NONE,
+            self._on_properties_changed,
+        )
+        # Catches the player appearing/disappearing (playerctld only owns
+        # the name while a player is active).
+        bus.signal_subscribe(
+            "org.freedesktop.DBus",
+            "org.freedesktop.DBus",
+            "NameOwnerChanged",
+            "/org/freedesktop/DBus",
+            MPRIS_BUS_NAME,
+            Gio.DBusSignalFlags.NONE,
+            self._on_properties_changed,
+        )
+
+    def _on_properties_changed(self, *_args):
+        self.refresh()
 
     def _make_button(self, icon_name, callback):
         btn = Gtk.Button()
@@ -154,7 +202,11 @@ class Popup(Gtk.Window):
 
     def _on_playpause(self):
         playerctl("play-pause")
-        GLib.timeout_add(150, self.refresh)
+        GLib.timeout_add(150, self._refresh_once)
+
+    def _refresh_once(self):
+        self.refresh()
+        return False
 
     def _on_seek(self, _range, _scroll, value):
         playerctl("position", str(value))
@@ -179,8 +231,16 @@ class Popup(Gtk.Window):
         Gtk.main_quit()
         return False
 
-    def _poll(self):
-        self.refresh()
+    def _tick(self):
+        # Runs every second purely to advance the seek bar locally between
+        # real D-Bus events — MPRIS only emits PropertiesChanged/Seeked on
+        # actual state changes, not a per-second position tick, so without
+        # this the bar would only move when something else happens to
+        # trigger a refresh(). No playerctl/D-Bus calls happen here.
+        if not self._seeking and self._status == "Playing" and self._length > 0:
+            self._position = min(self._position + 1, self._length)
+            self.seek_scale.set_value(self._position)
+            self.pos_label.set_text(self._fmt_time(self._position))
         return True
 
     def refresh(self):
@@ -196,6 +256,9 @@ class Popup(Gtk.Window):
             self.seek_scale.set_sensitive(False)
             self.pos_label.set_text("0:00")
             self.dur_label.set_text("0:00")
+            self._status = ""
+            self._position = 0.0
+            self._length = 0.0
             return True
 
         title = playerctl("metadata", "title") or "Unknown title"
@@ -219,6 +282,10 @@ class Popup(Gtk.Window):
             position = float(playerctl("position") or 0)
         except ValueError:
             position = 0
+
+        self._status = status
+        self._length = length
+        self._position = position
 
         self.seek_scale.set_sensitive(length > 0)
         if not self._seeking:

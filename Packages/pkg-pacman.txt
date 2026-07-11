@@ -72,6 +72,7 @@ qt5-wayland
 qt6-wayland
 resvg
 rofi
+rust
 sddm
 slurp
 smartmontools
@@ -107,4 +108,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-07-11_16:13
+# Exported on 2026-07-11_21:43

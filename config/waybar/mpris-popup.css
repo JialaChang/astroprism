@@ -1,7 +1,7 @@
 @import url("colors.css");
 
 window.mpris-popup {
-  background-color: @surface_container;
+  background-color: alpha(@surface_container, 0.85);
   border-radius: 16px;
   border: 1px solid alpha(@outline_variant, 0.4);
 }
