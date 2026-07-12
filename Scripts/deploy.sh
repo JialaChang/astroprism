@@ -80,8 +80,10 @@ backup)
   echo "==> Backup all the files !"
   ;;
 deploy)
+  backup_all
+  echo "==> Backup all the files !"
   deploy_all
-  hyprctl reload
+  hyprctl reload > /dev/null
   echo "==> Deploy all the files !"
   ;;
 *)

@@ -84,8 +84,6 @@ cargo build --release
 wallset
 ```
 
-Post-install checklist (note to self): enable `sddm` and `bluetooth` services, log in to browser / Spotify / Discord.
-
 ## Scripts
 
 | Script | What it does |

@@ -27,6 +27,7 @@ window#waybar {
 #clock,
 #battery,
 #cpu,
+#custom-gpu,
 #memory,
 #idle_inhibitor,
 #temperature,
@@ -74,6 +75,11 @@ window#waybar {
   font-weight: bold;
 }
 
+#custom-gpu {
+  border-top: 3px solid @tertiary;
+  font-weight: bold;
+}
+
 #memory {
   border-top: 3px solid @tertiary;
   font-weight: bold;
@@ -87,6 +93,7 @@ window#waybar {
   padding-right: 5px;
 }
 
+#group-sysstats.collapsed #custom-gpu,
 #group-sysstats.collapsed #memory,
 #group-sysstats.collapsed #idle_inhibitor {
   padding: 0;

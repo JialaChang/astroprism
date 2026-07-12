@@ -59,6 +59,7 @@ npm
 nvidia-open-dkms
 nvidia-settings
 nvidia-utils
+nvtop
 os-prober
 otf-codenewroman-nerd
 pavucontrol
@@ -108,4 +109,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-07-11_21:43
+# Exported on 2026-07-12_11:00
