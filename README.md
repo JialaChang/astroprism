@@ -1,4 +1,4 @@
-<h1 align="center">🔭 astroprism</h1>
+<h1 align="center">☄ astroprism ☄</h1>
 
 <p align="center">
   Arch Linux + Hyprland dotfiles — pick a wallpaper, and the whole desktop re-colors itself to match.

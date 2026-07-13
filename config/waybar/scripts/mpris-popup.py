@@ -30,12 +30,11 @@ HIDE_DELAY_MS = 3000
 POPUP_WIDTH = 420
 POPUP_HEIGHT = 190
 # Gap between the top of the screen and the popup (i.e. distance below the bar)
-POPUP_TOP_MARGIN = 0
+POPUP_TOP_MARGIN = 10
 # Approximate screen-left offset of the mpris module in modules-left
 POPUP_LEFT_MARGIN = 230
 
-# playerctld proxies whichever player is currently active under one fixed
-# bus name, so we can subscribe to it without tracking players ourselves.
+# playerctld proxies whichever player is currently active under one fixed bus name
 MPRIS_BUS_NAME = "org.mpris.MediaPlayer2.playerctld"
 MPRIS_OBJECT_PATH = "/org/mpris/MediaPlayer2"
 DBUS_PROPERTIES_IFACE = "org.freedesktop.DBus.Properties"
@@ -78,8 +77,7 @@ class Popup(Gtk.Window):
         self.get_style_context().add_class("mpris-popup")
 
         # Needed so the CSS background's alpha channel (and the area outside
-        # the rounded corners) actually renders as transparent instead of an
-        # opaque box.
+        # the rounded corners) actually renders as transparent instead of an opaque box.
         screen = self.get_screen()
         visual = screen.get_rgba_visual() if screen else None
         if visual:
@@ -202,7 +200,7 @@ class Popup(Gtk.Window):
 
     def _on_playpause(self):
         playerctl("play-pause")
-        GLib.timeout_add(150, self._refresh_once)
+        GLib.timeout_add(50, self._refresh_once)
 
     def _refresh_once(self):
         self.refresh()
@@ -271,12 +269,13 @@ class Popup(Gtk.Window):
 
         art_url = playerctl("metadata", "mpris:artUrl")
         if not art_url:
-            # Firefox doesn't expose mpris:artUrl for YouTube; derive a
-            # thumbnail from the page URL instead.
-            art_url = self._youtube_thumb_url(playerctl("metadata", "xesam:url"))
+            # Firefox doesn't expose mpris:artUrl for YouTube;
+            # derive a thumbnail from the page URL instead.
+            art_url = self._youtube_thumbnail_url(playerctl("metadata", "xesam:url"))
         self._set_art(art_url)
 
         length_str = playerctl("metadata", "mpris:length")
+        # the unit of mpris:length is μs
         length = int(length_str) / 1_000_000 if length_str.isdigit() else 0
         try:
             position = float(playerctl("position") or 0)
@@ -298,7 +297,7 @@ class Popup(Gtk.Window):
     _YOUTUBE_ID_RE = re.compile(r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})")
 
     @classmethod
-    def _youtube_thumb_url(cls, page_url):
+    def _youtube_thumbnail_url(cls, page_url):
         if not page_url:
             return ""
         match = cls._YOUTUBE_ID_RE.search(page_url)

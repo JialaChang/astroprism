@@ -1,10 +1,10 @@
 // Author: JialaChang & Claude
+
 // Floating GTK popup for waybar's mpris module (click-to-open, since waybar
 // has no hover-exec): shows cover art, title/artist, a seek bar, and
 // prev/play-pause/next controls, driven through playerctl. Refreshes are
 // triggered by D-Bus PropertiesChanged signals from playerctld rather than
 // polling; only the seek bar's per-second advance is a local timer.
-// Rust port of mpris-popup.py.
 
 use std::cell::Cell;
 use std::io::Read;
@@ -21,16 +21,16 @@ const HIDE_DELAY_MS: u64 = 3000;
 const POPUP_WIDTH: i32 = 420;
 const POPUP_HEIGHT: i32 = 190;
 /// Gap between the top of the screen and the popup (i.e. distance below the bar).
-const POPUP_TOP_MARGIN: i32 = 0;
+const POPUP_TOP_MARGIN: i32 = 10;
 /// Approximate screen-left offset of the mpris module in modules-left.
 const POPUP_LEFT_MARGIN: i32 = 230;
 
-/// playerctld proxies whichever player is currently active under one fixed
-/// bus name, so we can subscribe to it without tracking players ourselves.
+// playerctld proxies whichever player is currently active under one fixed bus name
 const MPRIS_BUS_NAME: &str = "org.mpris.MediaPlayer2.playerctld";
 const MPRIS_OBJECT_PATH: &str = "/org/mpris/MediaPlayer2";
 const DBUS_PROPERTIES_IFACE: &str = "org.freedesktop.DBus.Properties";
 
+/// Signal Termination of linux
 const SIGTERM: i32 = 15;
 
 fn expand_home(path: &str) -> String {
@@ -64,7 +64,7 @@ fn already_running() -> Option<i32> {
 }
 
 fn fmt_time(seconds: f64) -> String {
-    let seconds = seconds.max(0.0) as i64;
+    let seconds: i64 = seconds.max(0.0) as i64;
     format!("{}:{:02}", seconds / 60, seconds % 60)
 }
 
@@ -83,7 +83,7 @@ fn scale_cover(pixbuf: &Pixbuf, size: i32) -> Option<Pixbuf> {
     Some(scaled.new_subpixbuf(x, y, size, size))
 }
 
-fn youtube_thumb_url(page_url: &str) -> String {
+fn youtube_thumbnail_url(page_url: &str) -> String {
     if page_url.is_empty() {
         return String::new();
     }
@@ -107,21 +107,21 @@ fn fetch_url(url: &str) -> Option<Vec<u8>> {
 fn path_from_file_url(url: &str) -> String {
     let raw = url.strip_prefix("file://").unwrap_or(url);
     // Minimal percent-decoding; local mpris art paths rarely need more.
-    let mut out = String::new();
+    let mut out = Vec::new();
     let bytes = raw.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
             if let Ok(byte) = u8::from_str_radix(&raw[i + 1..i + 3], 16) {
-                out.push(byte as char);
+                out.push(byte);
                 i += 3;
                 continue;
             }
         }
-        out.push(bytes[i] as char);
+        out.push(bytes[i]);
         i += 1;
     }
-    out
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 #[derive(Clone)]
@@ -165,9 +165,7 @@ fn set_art(widgets: &Widgets, url: &str) {
 
     match pixbuf {
         Some(p) => widgets.art.set_from_pixbuf(Some(&p)),
-        None => widgets
-            .art
-            .set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog),
+        None => widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog),
     }
 }
 
@@ -181,9 +179,7 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     if !has_player {
         widgets.title_label.set_text("No media player");
         widgets.artist_label.set_text("");
-        widgets
-            .art
-            .set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
+        widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
         widgets.seek_scale.set_sensitive(false);
         widgets.pos_label.set_text("0:00");
         widgets.dur_label.set_text("0:00");
@@ -214,15 +210,16 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
 
     let mut art_url = playerctl(&["metadata", "mpris:artUrl"]);
     if art_url.is_empty() {
-        // Firefox doesn't expose mpris:artUrl for YouTube; derive a
-        // thumbnail from the page URL instead.
-        art_url = youtube_thumb_url(&playerctl(&["metadata", "xesam:url"]));
+        // Firefox doesn't expose mpris:artUrl for YouTube;
+        // derive a thumbnail from the page URL instead.
+        art_url = youtube_thumbnail_url(&playerctl(&["metadata", "xesam:url"]));
     }
     set_art(widgets, &art_url);
 
     let length_str = playerctl(&["metadata", "mpris:length"]);
-    let length = length_str.parse::<f64>().unwrap_or(0.0) / 1_000_000.0;
-    let position: f64 = playerctl(&["position"]).parse().unwrap_or(0.0);
+    // the unit of mpris:length is μs
+    let length = length_str.parse::<f64>().unwrap_or_default() / 1_000_000.0;
+    let position: f64 = playerctl(&["position"]).parse().unwrap_or_default();
 
     shared.playing.set(is_playing);
     shared.length.set(length);
@@ -231,8 +228,7 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     widgets.seek_scale.set_sensitive(length > 0.0);
     if !shared.seeking.get() {
         widgets.seek_scale.set_range(0.0, length.max(1.0));
-        widgets
-            .seek_scale
+        widgets.seek_scale
             .set_value(if length > 0.0 { position.min(length) } else { 0.0 });
     }
     widgets.pos_label.set_text(&fmt_time(position));
@@ -273,9 +269,8 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
         );
     }
 
-    // Leak the connection so the subscriptions stay alive for the process's
-    // lifetime; this is a short-lived, single-purpose popup, so there's
-    // nothing to clean up before exit.
+    // Leak the connection so the subscriptions stay alive for the process's lifetime;
+    // this is a short-lived, single-purpose popup, so there's nothing to clean up before exit.
     std::mem::forget(conn);
 }
 
@@ -295,8 +290,7 @@ fn build_window() -> gtk::Window {
     window.style_context().add_class("mpris-popup");
 
     // Needed so the CSS background's alpha channel (and the area outside
-    // the rounded corners) actually renders as transparent instead of an
-    // opaque box.
+    // the rounded corners) actually renders as transparent instead of an opaque box.
     if let Some(screen) = WidgetExt::screen(&window) {
         if let Some(visual) = screen.rgba_visual() {
             window.set_visual(Some(&visual));
@@ -401,7 +395,7 @@ fn build_window() -> gtk::Window {
             playerctl(&["play-pause"]);
             let widgets = widgets.clone();
             let shared = shared.clone();
-            glib::source::timeout_add_local_once(std::time::Duration::from_millis(150), move || {
+            glib::source::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
                 refresh(&widgets, &shared);
             });
         });
@@ -432,8 +426,8 @@ fn build_window() -> gtk::Window {
     }
 
     // Local per-second tick: only advances the seek bar between real D-Bus
-    // events (MPRIS doesn't emit a position signal every second). No
-    // playerctl/D-Bus calls happen here.
+    // events (MPRIS doesn't emit a position signal every second).
+    // No playerctl/D-Bus calls happen here.
     {
         let widgets = widgets.clone();
         let shared = shared.clone();
