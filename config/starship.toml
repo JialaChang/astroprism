@@ -1,24 +1,24 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = '''
-[󰣇 ](fg:matugen-color3)$username[ ](fg:matugen-color3)$directory[ ](fg:matugen-color1)$git_branch$git_status$nodejs$rust$golang$php$line_break$character'''
+[󰣇 ](fg:matugen-color3)$username[ ](fg:matugen-color3)$directory[ ](fg:matugen-color1)$git_branch$git_status $nodejs$rust$golang$php$python$lua $cmd_duration$jobs$line_break$character'''
 
 palette = 'colors'
 
 [palettes.colors]
 mustard = '#af8700'
-matugen-color1 = '#87d1ea'
-matugen-color2 = '#003542'
-matugen-color3 = '#bfc8cc'
-matugen-color4 = '#1b2023'
-matugen-color5 = '#003542'
-matugen-color6 = '#003542'
-matugen-color7 = '#0f1416'
-matugen-color8 = '#87d1ea'
-matugen-color9 = '#c2c4eb'
-matugen-color10 = '#001f27'
-matugen-color11 = '#004e5f'
-matugen-color12 = '#1d333b'
+matugen-color1 = '#a2c9fe'
+matugen-color2 = '#00325a'
+matugen-color3 = '#c3c6cf'
+matugen-color4 = '#1d2024'
+matugen-color5 = '#00325a'
+matugen-color6 = '#00325a'
+matugen-color7 = '#111418'
+matugen-color8 = '#a2c9fe'
+matugen-color9 = '#d8bde4'
+matugen-color10 = '#001c37'
+matugen-color11 = '#1d4875'
+matugen-color12 = '#263141'
 
 [username]
 show_always = true
@@ -34,11 +34,11 @@ truncation_length = 3
 truncation_symbol = "…/"
 
 [directory.substitutions]
-"Documents" = "󰈙 "
-"Downloads" = "󰇚 "
-"Music" = " "
-"Pictures" = " "
-"Coding" = "󰨞 "
+"Documents" = "󰈙"
+"Downloads" = "󰇚"
+"Music" = ""
+"Pictures" = ""
+"Coding" = "󰨞"
 
 [git_branch]
 symbol = ""
@@ -48,20 +48,37 @@ format = '[ $symbol $branch](fg:matugen-color9)'
 format = '[($all_status$ahead_behind)](fg:matugen-color9)'
 
 [nodejs]
-symbol = ""
-format = '[ $symbol ($version)](fg:matugen-color11)'
+symbol = ""
+format = '[ $symbol ($version)](fg:matugen-color3)'
 
 [rust]
-symbol = ""
-format = '[ $symbol ($version)](fg:matugen-color8)'
+symbol = ""
+format = '[ $symbol ($version)](fg:matugen-color3)'
 
 [golang]
-symbol = ""
-format = '[ $symbol ($version)](fg:matugen-color1)'
+symbol = "󰟓"
+format = '[ $symbol ($version)](fg:matugen-color3)'
 
 [php]
-symbol = ""
-format = '[ $symbol ($version)](fg:matugen-color9)'
+symbol = ""
+format = '[ $symbol ($version)](fg:matugen-color3)'
+
+[python]
+symbol = ""
+format = '[ $symbol ($version)( \($virtualenv\))](fg:matugen-color3)'
+
+[lua]
+symbol = ""
+format = '[ $symbol ($version)](fg:matugen-color3)'
+
+[cmd_duration]
+min_time = 2000
+format = '[ 󱎫 $duration](fg:matugen-color9)'
+
+[jobs]
+symbol = ""
+number_threshold = 1
+format = '[ $symbol $number](fg:matugen-color9)'
 
 [time]
 disabled = false

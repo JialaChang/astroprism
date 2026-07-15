@@ -44,6 +44,7 @@ libva-intel-driver
 linux
 linux-firmware
 linux-headers
+mpv
 nano
 neovide
 networkmanager
@@ -55,6 +56,7 @@ noto-fonts-emoji
 npm
 nvidia-open-dkms
 nvidia-settings
+nvtop
 os-prober
 otf-codenewroman-nerd
 pavucontrol
@@ -67,6 +69,7 @@ qt5-wayland
 qt6-wayland
 resvg
 rofi
+rust
 sddm
 slurp
 smartmontools
@@ -101,4 +104,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-07-10_22:35
+# Exported on 2026-07-15_18:20

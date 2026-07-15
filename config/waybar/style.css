@@ -27,6 +27,7 @@ window#waybar {
 #clock,
 #battery,
 #cpu,
+#custom-gpu,
 #memory,
 #idle_inhibitor,
 #temperature,
@@ -41,6 +42,7 @@ window#waybar {
 #custom-temperature,
 #custom-theme-toggle,
 #cava,
+#mpris,
 #workspaces {
   background: @surface_container;
   color: @on_surface;
@@ -58,7 +60,7 @@ window#waybar {
 }
 
 #custom-theme-toggle {
-  border-top: 3px solid @secondary;
+  border-top: 3px solid @primary;
   color: @secondary;
   font-weight: bold;
 }
@@ -70,6 +72,11 @@ window#waybar {
 
 #cpu {
   border-top: 3px solid @secondary;
+  font-weight: bold;
+}
+
+#custom-gpu {
+  border-top: 3px solid @tertiary;
   font-weight: bold;
 }
 
@@ -86,6 +93,7 @@ window#waybar {
   padding-right: 5px;
 }
 
+#group-sysstats.collapsed #custom-gpu,
 #group-sysstats.collapsed #memory,
 #group-sysstats.collapsed #idle_inhibitor {
   padding: 0;
@@ -120,6 +128,18 @@ window#waybar {
   font-weight: bold;
 }
 
+#mpris {
+  border-top: 3px solid @primary;
+  color: @primary;
+  font-weight: bold;
+}
+
+#mpris.paused {
+  color: @on_surface_variant;
+  border-top-color: @outline_variant;
+  font-weight: bold;
+}
+
 #network {
   border-top: 3px solid @secondary;
   font-weight: bold;
@@ -133,7 +153,7 @@ window#waybar {
 }
 
 #battery {
-  border-top: 3px solid @primary;
+  border-top: 3px solid @secondary;
   font-weight: bold;
 }
 
@@ -156,6 +176,7 @@ window#waybar {
 }
 
 #battery.charging {
+  border-top: 3px solid @primary;
   color: @primary;
 }
 
@@ -173,8 +194,8 @@ window#waybar {
 #cpu:hover,
 #memory:hover,
 #idle_inhibitor:hover,
-#custom-swaync:hover {
-  padding-top: 8px;
+#custom-swaync:hover,
+#mpris:hover {
   background: @surface_container_high;
 }
 

@@ -3,7 +3,8 @@ clipse
 libcava
 matugen-bin
 oh-my-posh
+sddm-astronaut-theme
 spotify
 visual-studio-code-bin
 yay
-# Exported on 2026-07-10_22:35
+# Exported on 2026-07-15_18:20

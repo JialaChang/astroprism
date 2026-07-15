@@ -18,7 +18,7 @@ elif [ "$MODE" == "down" ]; then
         light=$((light - 1))
         if [ "$light" -lt 20 ]; then
                 light=20
-        fi
+        fi     
 
 elif [ "$MODE" == "reset" ]; then
 

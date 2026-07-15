@@ -1,5 +1,10 @@
 pkg-failed.txt
+
 **/hypr/colors/
 **/waybar/colors.css
 **/kitty/colors/
 **/rofi/colors/
+
+.vscode/
+__pycache__/
+target/

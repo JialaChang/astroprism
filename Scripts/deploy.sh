@@ -46,7 +46,6 @@ backup_all() {
   backup "$HOME/.config/waybar"
   backup "$HOME/.config/matugen"
   backup "$HOME/.config/rofi"
-  backup "$HOME/.config/wallpapers"
 
   backup "$HOME/.config/starship.toml"
 
@@ -65,7 +64,6 @@ deploy_all() {
   deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar"
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen"
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi"
-  deploy "$ROOT_DIR/config/wallpapers" "$HOME/.config/wallpapers"
 
   deploy "$ROOT_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 
@@ -82,8 +80,10 @@ backup)
   echo "==> Backup all the files !"
   ;;
 deploy)
+  backup_all
+  echo "==> Backup all the files !"
   deploy_all
-  hyprctl reload
+  hyprctl reload > /dev/null
   echo "==> Deploy all the files !"
   ;;
 *)
