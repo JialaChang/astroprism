@@ -38,6 +38,7 @@ local terminal = "kitty"
 local fileManager = "dolphin"
 local menu = "rofi -show drun -theme ~/.config/rofi/launchers/type-1/style-7.rasi"
 local powermenu = "~/.config/rofi/applets/bin/powermenu.sh"
+local screenshot = "~/.config/rofi/applets/bin/screenshot.sh"
 
 -------------------
 ---- AUTOSTART ----
@@ -271,7 +272,7 @@ local closeWindowBind = hl.bind(mainMod .. " + C", hl.dsp.window.close())
 -- closeWindowBind:set_enabled(false)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+-- hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle only
 
 -- My personal keybinds
@@ -280,16 +281,8 @@ hl.bind(mainMod .. "+ B", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("bash -c 'pkill waybar || waybar & disown'"))
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(powermenu))
 -- screenshot
-hl.bind(
-	"CTRL + P",
-	hl.dsp.exec_cmd("bash -c 'F=~/Pictures/Screenshot/$(date +%Y-%m-%d_%H.%M.%S).png; grim $F && wl-copy < $F'")
-)
-hl.bind(
-	"CTRL + SHIFT + S",
-	hl.dsp.exec_cmd(
-		"bash -c 'F=~/Pictures/Screenshot/$(date +%Y-%m-%d_%H.%M.%S).png; grim -g \"$(slurp)\" $F && wl-copy < $F'"
-	)
-)
+hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(screenshot))
+hl.bind("CTRL + SHIFT + S", hl.dsp.exec_cmd(screenshot .. " --opt3"))
 -- toggle opacity
 hl.bind(mainMod .. " + CTRL + P", hl.dsp.window.tag({ tag = "peek" }))
 hl.bind(mainMod .. " + CTRL + O", hl.dsp.window.tag({ tag = "nopeek" }))

@@ -34,6 +34,7 @@ hyprlock
 hyprpaper
 hyprsunset
 imagemagick
+imv
 intel-media-driver
 intel-ucode
 jq
@@ -74,6 +75,7 @@ qt6-wayland
 resvg
 rofi
 rust
+rust-src
 sddm
 slurp
 smartmontools
@@ -93,6 +95,7 @@ vulkan-intel
 vulkan-nouveau
 vulkan-radeon
 waybar
+wf-recorder
 wget
 wireplumber
 wl-clipboard
@@ -109,4 +112,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-07-12_11:00
+# Exported on 2026-07-17_00:26

@@ -7,7 +7,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Arch_Linux-1793D1?logo=archlinux&logoColor=white" alt="Arch Linux">
   <img src="https://img.shields.io/badge/Hyprland-58E1FF?logo=hyprland&logoColor=black" alt="Hyprland">
-  <img src="https://img.shields.io/badge/config-Lua-2C2D72?logo=lua&logoColor=white" alt="Lua config">
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0">
 </p>
 
@@ -25,6 +24,7 @@
 - **Wallpaper-driven theming** — `wallset` opens a rofi picker with previews; one click re-colors Hyprland borders, Waybar, Kitty, Rofi, swaync, btop, starship and GTK apps via [matugen](https://github.com/InioX/matugen) (Material You)
 - **Light / dark toggle** — a Waybar module regenerates the whole scheme in the other mode, same wallpaper
 - **Custom MPRIS popup** — click the Waybar media module for a popup with cover art and playback controls, written in Rust
+- **Screenshot applet with scroll capture** — a rofi menu (`Super+P`) for desktop/window/area/timed shots, plus **scroll capture** (record while you scroll, frames get stitched into one tall PNG by a small Go tool) and **screen recording**
 - **Reproducible installs** — exported pacman/AUR package lists + deploy/sync scripts make reinstalling (or borrowing) the setup a few commands
 
 ## What's inside
@@ -33,9 +33,9 @@
 |---|---|
 | WM | [Hyprland](https://hypr.land/) — configured in **Lua** (`hyprland.lua`) |
 | Bar | Waybar, with custom MPRIS popup & light/dark toggle |
-| Launcher / menus | Rofi (launcher, powermenu, wallpaper picker) |
+| Launcher / menus | Rofi (launcher, applets, wallpaper picker) |
 | Terminal | Kitty |
-| Editor | Neovim (LazyVim) |
+| Editor | Neovim (LazyVim & Neovide) |
 | Shell | zsh + starship (bash config kept as fallback) |
 | Notifications | swaync |
 | Lockscreen | hyprlock |
@@ -72,12 +72,12 @@ git clone https://aur.archlinux.org/yay.git /tmp/yay && (cd /tmp/yay && makepkg 
 # 2. install everything from the exported lists
 ./Scripts/pkg.sh install        # failures are logged to Packages/pkg-failed.txt
 
-# 3. deploy configs (backup first!)
+# 3. deploy configs
 ./Scripts/deploy.sh backup      # saves existing configs as *.backup
 ./Scripts/deploy.sh deploy      # copies configs into place + hyprctl reload
 
 # 4. build the waybar MPRIS popup (waybar points at the release binary)
-cd ~/.config/waybar/scripts/mpris-popup-rs
+cd ~/.config/waybar/scripts/mpris-popup
 cargo build --release
 
 # 5. set a wallpaper — this also generates the whole color scheme
@@ -117,12 +117,16 @@ wallset (rofi picker with previews)
 
 Click the mpris module → a popup with cover art and playback controls.
 
-- Active version: **Rust** (`config/waybar/scripts/mpris-popup-rs/`), needs `cargo build --release` after deploying (waybar's `on-click` points at `target/release/mpris-popup-rs`).
+- Active version: **Rust** (`config/waybar/scripts/mpris-popup/`), needs `cargo build --release` after deploying (waybar's `on-click` points at `target/release/mpris-popup`).
 - The original Python version (`mpris-popup.py`) is kept around and can be switched back in `waybar/config.jsonc`.
 
-## Hyprland Lua config
+## Screenshot applet
 
-Hyprland is configured with the newer Lua config (`config/hypr/hyprland.lua`) instead of `hyprland.conf`. Matugen writes border colors to `config/hypr/colors/colors.lua`, which the main config loads via `require("colors.colors")` — so window borders follow the wallpaper too.
+`Super+P` opens the rofi screenshot menu; `Ctrl+Shift+S` goes straight to an area shot. Shots are saved to `~/Pictures/Screenshot` and copied to the clipboard.
+
+- Desktop / window / area / timed shots via grim + slurp.
+- **Scroll capture** — start recording a region, scroll through the content, open the menu again to stop; frames are stitched into one tall PNG by `scrollstitch`, a small Go tool in `config/rofi/applets/bin/scrollstitch/` (auto-built on first use, needs `go`).
+- **Screen recording** — toggle a region recording, saved to `~/Videos/Screenrecord`.
 
 ## Credits
 

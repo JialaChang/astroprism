@@ -1,4 +1,4 @@
-// Author: JialaChang & Claude
+// Author: JialaChang
 
 // Floating GTK popup for waybar's mpris module (click-to-open, since waybar
 // has no hover-exec): shows cover art, title/artist, a seek bar, and
