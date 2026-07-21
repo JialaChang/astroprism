@@ -180,7 +180,11 @@ shotwin () {
 }
 
 shotarea () {
-	cd ${dir} && grim -g "$(slurp -d)" - | copy_shot
+	geom=$(slurp -d)
+	if [[ -z "$geom" ]]; then
+		exit 0
+	fi
+	cd ${dir} && grim -g "$geom" - | copy_shot
 	notify_only
 }
 

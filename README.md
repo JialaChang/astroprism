@@ -61,13 +61,13 @@ Docs/        → screenshots
 > These are personal dotfiles, not a distro. `deploy.sh` **overwrites** existing configs (they're backed up as `*.backup` first), and the package lists include desktop apps like Discord, Spotify and VS Code. Read the scripts and trim `Packages/*.txt` before running anything.
 
 ```sh
-# 0. base system installed, network up, git available
-git clone git@github.com:JialaChang/astroprism.git
-cd astroprism
-
-# 1. install yay first (pkg.sh needs it)
+# 0. install base system and yay first
 sudo pacman -S --needed base-devel git
 git clone https://aur.archlinux.org/yay.git /tmp/yay && (cd /tmp/yay && makepkg -si)
+
+# 1. clone this dotfile
+git clone git@github.com:JialaChang/astroprism.git
+cd astroprism
 
 # 2. install everything from the exported lists
 ./Scripts/pkg.sh install        # failures are logged to Packages/pkg-failed.txt
