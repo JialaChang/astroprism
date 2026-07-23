@@ -16,14 +16,14 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 const PIDFILE: &str = "/tmp/waybar-mpris-popup.pid";
-const ART_SIZE: i32 = 88;
+const ART_SIZE: i32 = 75;
 const HIDE_DELAY_MS: u64 = 3000;
-const POPUP_WIDTH: i32 = 420;
-const POPUP_HEIGHT: i32 = 190;
+const POPUP_WIDTH: i32 = 360;
+const POPUP_HEIGHT: i32 = 120;
 /// Gap between the top of the screen and the popup (i.e. distance below the bar).
 const POPUP_TOP_MARGIN: i32 = 10;
 /// Approximate screen-left offset of the mpris module in modules-left.
-const POPUP_LEFT_MARGIN: i32 = 230;
+const POPUP_LEFT_MARGIN: i32 = 150;
 
 // playerctld proxies whichever player is currently active under one fixed bus name
 const MPRIS_BUS_NAME: &str = "org.mpris.MediaPlayer2.playerctld";

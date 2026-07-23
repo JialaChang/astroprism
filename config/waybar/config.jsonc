@@ -16,8 +16,8 @@
     "modules-center": [
         // "custom/temperature",
         // "custom/light",
-        "hyprland/workspaces",
         "backlight",
+        "hyprland/workspaces",
         "pulseaudio"
     ],
     "modules-right": [
@@ -88,7 +88,7 @@
         },
         "states": {
             "warning":30,
-            "critical": 15
+            "critical": 20
         },
 
         "format-charging": "{capacity}% "
@@ -148,7 +148,7 @@
         "min-length": 20,
         "tooltip": false,
         "on-click": "~/.config/waybar/scripts/mpris-popup-rs/target/release/mpris-popup-rs",
-        // uncomment below if you want to use python
+        // uncomment below if you want to use python version
         // "on-click": "~/.config/waybar/scripts/mpris-popup.py",
         "on-click-right": "playerctl play-pause"
     },

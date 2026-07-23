@@ -27,12 +27,12 @@ PIDFILE = "/tmp/waybar-mpris-popup.pid"
 CSS_PATH = os.path.expanduser("~/.config/waybar/mpris-popup.css")
 ART_SIZE = 88
 HIDE_DELAY_MS = 3000
-POPUP_WIDTH = 420
-POPUP_HEIGHT = 190
+POPUP_WIDTH = 360
+POPUP_HEIGHT = 120
 # Gap between the top of the screen and the popup (i.e. distance below the bar)
 POPUP_TOP_MARGIN = 10
 # Approximate screen-left offset of the mpris module in modules-left
-POPUP_LEFT_MARGIN = 230
+POPUP_LEFT_MARGIN = 150
 
 # playerctld proxies whichever player is currently active under one fixed bus name
 MPRIS_BUS_NAME = "org.mpris.MediaPlayer2.playerctld"

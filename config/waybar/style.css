@@ -176,13 +176,13 @@ window#waybar {
 }
 
 #battery.charging {
-  border-top: 3px solid @primary;
-  color: @primary;
+  border-top: 3px solid @success;
+  color: @success;
 }
 
 #battery.critical:not(.charging) {
-  background-color: @error;
-  color: @on_error;
+  border-top: 3px solid @error;
+  color: @error;
 }
 
 #clock:hover,
