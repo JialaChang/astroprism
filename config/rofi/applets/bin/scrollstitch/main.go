@@ -11,11 +11,10 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"io"
 	"math"
 	"os"
-	"path/filepath"
-	"runtime"
-	"sort"
+	"strconv"
 )
 
 const (
@@ -29,33 +28,18 @@ type frameProfile struct {
 	edge []float64 // per-row horizontal total variation (L1), a robust edge-density proxy
 }
 
-type frameResult struct {
-	path    string
-	img     *image.RGBA
-	profile frameProfile
-	err     error
-}
-
-func loadRGBA(path string) (*image.RGBA, error) {
-	f, err := os.Open(path)
-	if err != nil {
+// readFrame reads one raw RGBA frame (width*height*4 bytes).
+// It returns io.EOF once the stream is exhausted after a complete frame.
+func readFrame(r io.Reader, width, height int) (*image.RGBA, error) {
+	buf := make([]byte, width*height*4)
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
-	img, err := png.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-	// ffmpeg's truecolor PNG already decode into *image.RGBA
-	if rgba, ok := img.(*image.RGBA); ok {
-		return rgba, nil
-	}
-	// Fallback for any other pixel format
-	b := img.Bounds()
-	rgba := image.NewRGBA(b)
-	draw.Draw(rgba, b, img, b.Min, draw.Src)
-	return rgba, nil
+	return &image.RGBA{
+		Pix:    buf,
+		Stride: width * 4,
+		Rect:   image.Rect(0, 0, width, height),
+	}, nil
 }
 
 // rowProfile computes two per-row 1D signatures used to find the vertical shift between frames:
@@ -169,82 +153,46 @@ func cropRows(img *image.RGBA, y0, y1 int) *image.RGBA {
 	return out
 }
 
-// decodes frames and computes their profiles in parallel across CPUs
-// while delivering results strictly in file order.
-// At most `window` decoded frames are held in memory waiting to be consumed.
-func decodeFrame(files []string, windows int) <-chan chan frameResult {
-	queue := make(chan chan frameResult, windows)
-	go func() {
-		semaphore := make(chan struct{}, runtime.NumCPU())
-		for _, path := range files {
-			ch := make(chan frameResult, 1)
-			queue <- ch // block when the window is full, bounding memory
-			semaphore <- struct{}{}
-			go func(path string) {
-				defer func() { <-semaphore }()
-				img, err := loadRGBA(path)
-				var profile frameProfile
-				if err == nil {
-					profile = rowProfile(img)
-				}
-				ch <- frameResult{path, img, profile, err}
-			}(path)
-		}
-		close(queue)
-	}()
-	return queue
-}
-
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: scrollstitch <frames_dir> <output.png>")
+	if len(os.Args) != 4 {
+		fmt.Fprintln(os.Stderr, "usage: scrollstitch <width> <height> <output.png>")
 		os.Exit(1)
 	}
-	framesDir, outPath := os.Args[1], os.Args[2]
-
-	entries, err := os.ReadDir(framesDir)
+	width, err := strconv.Atoi(os.Args[1])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "read frames dir:", err)
+		fmt.Fprintln(os.Stderr, "invalid width: ", err)
 		os.Exit(1)
 	}
-	var files []string
-	for _, e := range entries {
-		if !e.IsDir() && filepath.Ext(e.Name()) == ".png" {
-			files = append(files, filepath.Join(framesDir, e.Name()))
-		}
-	}
-	sort.Strings(files)
-	if len(files) == 0 {
-		fmt.Fprintln(os.Stderr, "no frames found in", framesDir)
-		os.Exit(1)
-	}
-
-	first, err := loadRGBA(files[0])
+	height, err := strconv.Atoi(os.Args[2])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "load", files[0], err)
+		fmt.Fprintln(os.Stderr, "invalid height:", err)
 		os.Exit(1)
 	}
-	width := first.Bounds().Dx()
-	height := first.Bounds().Dy()
+	outPath := os.Args[3]
+
+	first, err := readFrame(os.Stdin, width, height)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "read first frame: ", err)
+		os.Exit(1)
+	}
 
 	pieces := []*image.RGBA{first}
 	totalHeight := height
 	prevProfile := rowProfile(first)
 	prevFrame := first
 
-	for channel := range decodeFrame(files[1:], 16) {
-		result := <-channel
-		if result.err != nil {
-			fmt.Fprintln(os.Stderr, "skip:", result.path, result.err)
-			continue
+	for {
+		curr, err := readFrame(os.Stdin, width, height)
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			break
 		}
-		curr := result.img
-		if curr.Bounds().Dx() != width || curr.Bounds().Dy() != height {
-			fmt.Fprintln(os.Stderr, "skip (size mismatch)", result.path)
-			continue
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "read frame: ", err)
+			break
 		}
 
-		offset, score := findOffset(prevProfile, result.profile)
+		currProfile := rowProfile(curr)
+		offset, score := findOffset(prevProfile, currProfile)
 		if score > errThreshold || offset <= minShift {
 			// No reliable new content detected
 			continue
@@ -255,7 +203,7 @@ func main() {
 
 		pieces = append(pieces, cropRows(curr, height-offset, height))
 		totalHeight += offset
-		prevProfile = result.profile
+		prevProfile = currProfile
 		prevFrame = curr
 	}
 

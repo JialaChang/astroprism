@@ -21,14 +21,38 @@ backup() {
   fi
 }
 
+# deploy {src} {dest} [generated paths to keep, relative to dest...]
 deploy() {
   local src=$1
   local dest=$2
+  shift 2
+  local keep=("$@")
+  local stash rel
 
   if [ -d "$src" ]; then
     echo "    -> Deploying dir $src to $dest..."
+
+    # stash matugen-generated files so rm -rf does not eat them
+    stash=$(mktemp -d)
+    for rel in "${keep[@]}"; do
+      if [ -e "$dest/$rel" ]; then
+        echo "    -> Keeping generated $rel..."
+        mkdir -p "$stash/$(dirname "$rel")"
+        cp -r "$dest/$rel" "$stash/$rel"
+      fi
+    done
+
     rm -rf "$dest"
     cp -r "$src" "$dest"
+
+    for rel in "${keep[@]}"; do
+      if [ -e "$stash/$rel" ]; then
+        rm -rf "${dest:?}/$rel"
+        mkdir -p "$dest/$(dirname "$rel")"
+        cp -r "$stash/$rel" "$dest/$rel"
+      fi
+    done
+    rm -rf "$stash"
   elif [ -f "$src" ]; then
     echo "    -> Deploying file $src to $dest..."
     mkdir -p "$(dirname "$dest")"
@@ -47,8 +71,6 @@ backup_all() {
   backup "$HOME/.config/matugen"
   backup "$HOME/.config/rofi"
 
-  backup "$HOME/.config/starship.toml"
-
   backup "$HOME/.local/bin/wallset"
   backup "$HOME/.local/bin/wallset-backend"
 
@@ -58,14 +80,12 @@ backup_all() {
 
 # deploy files {src} {dest}
 deploy_all() {
-  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr"
-  deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty"
+  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors"
+  deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors"
   deploy "$ROOT_DIR/config/nvim" "$HOME/.config/nvim"
-  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar"
+  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css"
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen"
-  deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi"
-
-  deploy "$ROOT_DIR/config/starship.toml" "$HOME/.config/starship.toml"
+  deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors"
 
   deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset"
   deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend"

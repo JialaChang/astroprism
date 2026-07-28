@@ -206,11 +206,14 @@ scrollcap () {
 		fi
 
 		dunstify -u low --replace=700 "Stitching scroll capture..."
-		frames_dir="$scrollcap_dir/frames"
-		rm -rf "$frames_dir" && mkdir -p "$frames_dir"
-		ffmpeg -y -loglevel error -i "$scrollcap_video" -vf fps=8 "$frames_dir/frame_%04d.png"
 
-		cd ${dir} && "$scrollstitch_bin" "$frames_dir" "$file" && wl-copy --type image/png < "$dir/$file"
+		read -r vw vh < <(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$scrollcap_video" | tr 'x' ' ')
+		
+
+		cd ${dir} && ffmpeg -y -loglevel error -i "$scrollcap_video" -vf fps=8 -pix_fmt rgba -f rawvideo - \
+			| "$scrollstitch_bin" "$vw" "$vh" "$file" \
+			&& wl-copy --type image/png < "$dir/$file"
+		
 		rm -rf "$scrollcap_dir"
 
 		if [[ -e "$dir/$file" ]]; then
