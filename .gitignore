@@ -8,3 +8,5 @@ pkg-failed.txt
 .vscode/
 __pycache__/
 target/
+
+config/rofi/applets/bin/scrollstitch/scrollstitch

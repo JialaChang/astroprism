@@ -8,7 +8,7 @@
     "modules-left": [
         "custom/nix",
         "clock",
-        "network",
+        // "network",
         "bluetooth",
         "mpris"
         // "hyprland/window"
@@ -186,8 +186,6 @@
         "tooltip-format": "{device_alias}"
     },
     "network": {
-        // use ip link show to config your interface
-        "interface": "enp6s0",
         "format": "{ifname}",
         "format-wifi": "{essid} ",
         "format-ethernet": "{ipaddr}/{cidr} 󰈀",
