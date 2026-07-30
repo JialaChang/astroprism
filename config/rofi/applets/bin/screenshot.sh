@@ -209,14 +209,19 @@ scrollcap () {
 
 		read -r vw vh < <(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$scrollcap_video" | tr 'x' ' ')
 		
+		# The stitcher reports on stderr which frames it used and which it threw away.
+		# left alone: running this from a terminal shows it,
+		# a keybind launch has nowhere to show it and drops it.
+		cd ${dir} && ffmpeg -y -loglevel error -i "$scrollcap_video" -vf fps=15 -pix_fmt rgba -f rawvideo - \
+			| "$scrollstitch_bin" "$vw" "$vh" "$file"
 
-		cd ${dir} && ffmpeg -y -loglevel error -i "$scrollcap_video" -vf fps=8 -pix_fmt rgba -f rawvideo - \
-			| "$scrollstitch_bin" "$vw" "$vh" "$file" \
-			&& wl-copy --type image/png < "$dir/$file"
-		
+		# DEBUG: keep the source recording next to its stitch.
+		# mv "$scrollcap_video" "$dir/${time}_source.mp4" 2>/dev/null
+
 		rm -rf "$scrollcap_dir"
 
 		if [[ -e "$dir/$file" ]]; then
+			wl-copy --type image/png < "$dir/$file"
 			dunstify -u low --replace=700 "Scroll capture saved and copied to clipboard."
 			imv "$dir/$file"
 		else
