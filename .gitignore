@@ -11,3 +11,4 @@ target/
 **/scrollstitch/scrollstitch
 
 pkg-failed.txt
+.deploy-stamps/
