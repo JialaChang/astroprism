@@ -1,7 +1,7 @@
 <h1 align="center">☄ astroprism ☄</h1>
 
 <p align="center">
-  Arch Linux + Hyprland dotfiles — pick a wallpaper, and the whole desktop re-colors itself to match.
+  Light in, spectrum out — Arch Linux + Hyprland dotfiles that refract a wallpaper into an entire desktop.
 </p>
 
 <p align="center">
@@ -25,14 +25,14 @@
 - **Light / dark toggle** — a Waybar module regenerates the whole scheme in the other mode, same wallpaper
 - **Custom MPRIS popup** — click the Waybar media module for a popup with cover art and playback controls, written in Rust
 - **Screenshot applet with scroll capture** — a rofi menu (`Super+P`) for desktop/window/area/timed shots, plus **scroll capture** (record while you scroll, frames get stitched into one tall PNG by a small Go tool) and **screen recording**
-- **Reproducible installs** — exported pacman/AUR package lists + deploy/sync scripts make reinstalling (or borrowing) the setup a few commands
+- **Reproducible installs** — exported pacman/AUR package lists + deploy/sync scripts make reinstalling (or borrowing) the setup a few commands; `deploy.sh` compiles the Rust/Go helpers for you and skips the ones whose sources haven't changed
 
 ## What's inside
 
 | Part | Choice |
 |---|---|
 | WM | [Hyprland](https://hypr.land/) — configured in **Lua** (`hyprland.lua`) |
-| Bar | Waybar, with custom MPRIS popup & light/dark toggle |
+| Bar | Waybar, with custom MPRIS popup, light/dark toggle & ext/workspaces |
 | Launcher / menus | Rofi (launcher, applets, wallpaper picker) |
 | Terminal | Kitty |
 | Editor | Neovim (LazyVim & Neovide) |
@@ -47,13 +47,18 @@
 ## Repo layout
 
 ```
-config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, wallpapers, starship.toml)
+config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, wallpapers)
 local/bin/   → ~/.local/bin/…     (wallset, wallset-backend)
 bashrc/zshrc → ~/.bashrc, ~/.zshrc
 Packages/    → exported package lists (pacman / AUR / failed log)
 Scripts/     → deploy.sh, sync.sh, pkg.sh
 Docs/        → screenshots
 ```
+
+Everything matugen writes (`hypr/colors/`, `waybar/colors.css`, `kitty/colors/`, `rofi/colors/`,
+`~/.config/starship.toml`) is generated, not tracked — the templates in `config/matugen/templates/`
+are the source of truth. `deploy.sh` keeps those generated files in place when it redeploys a
+config directory.
 
 ## Installation
 
@@ -72,15 +77,11 @@ cd astroprism
 # 2. install everything from the exported lists
 ./Scripts/pkg.sh install        # failures are logged to Packages/pkg-failed.txt
 
-# 3. deploy configs
+# 3. deploy configs (builds the Rust/Go helpers first, needs cargo + go)
 ./Scripts/deploy.sh backup      # saves existing configs as *.backup
-./Scripts/deploy.sh deploy      # copies configs into place + hyprctl reload
+./Scripts/deploy.sh deploy      # build + copy configs into place + hyprctl reload
 
-# 4. build the waybar MPRIS popup (waybar points at the release binary)
-cd ~/.config/waybar/scripts/mpris-popup
-cargo build --release
-
-# 5. set a wallpaper — this also generates the whole color scheme
+# 4. set a wallpaper — this also generates the whole color scheme
 wallset
 ```
 
@@ -89,12 +90,15 @@ wallset
 | Script | What it does |
 |---|---|
 | `deploy.sh backup` | Backs up every target as `*.backup` before overwriting |
-| `deploy.sh deploy` | Repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, then `hyprctl reload` |
+| `deploy.sh build` | Compiles `mpris-popup` (cargo) and `scrollstitch` (go); each target is stamped with a hash of its sources + build command, so an unchanged tree skips the compiler |
+| `deploy.sh deploy` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, then `hyprctl reload` |
 | `sync.sh` | System → repo: pulls current configs back in and re-exports package lists (run before committing) |
 | `pkg.sh export` | Writes explicitly-installed packages to `Packages/pkg-pacman.txt` / `pkg-aur.txt` (debug pkgs excluded) |
 | `pkg.sh install` | `pacman -Syu`, then installs both lists; failures go to `Packages/pkg-failed.txt` |
 
-> Both `deploy.sh` and `sync.sh` do `rm -rf` + copy on whole directories — they *replace*, not merge.
+> Both `deploy.sh` and `sync.sh` do `rm -rf` + copy on whole directories — they *replace*, not merge.  
+> The one exception is matugen's generated color files, which `deploy.sh` stashes and puts back.  
+> Build stamps live in `.deploy-stamps/`; delete it to force a rebuild.
 
 ## Dynamic theming
 
@@ -117,16 +121,25 @@ wallset (rofi picker with previews)
 
 Click the mpris module → a popup with cover art and playback controls.
 
-- Active version: **Rust** (`config/waybar/scripts/mpris-popup/`), needs `cargo build --release` after deploying (waybar's `on-click` points at `target/release/mpris-popup`).
+- Active version: **Rust** (`config/waybar/scripts/mpris-popup/`), built by `deploy.sh` (waybar's `on-click` points at `target/release/mpris-popup`).
 - The original Python version (`mpris-popup.py`) is kept around and can be switched back in `waybar/config.jsonc`.
+
+The workspaces module is `ext/workspaces` (the ext-workspace-v1 protocol), not `hyprland/workspaces`:
+the latter clicks send Hyprland's legacy `dispatch workspace N` string, which the Lua config provider
+rejects as a syntax error. Since that module has no `persistent-workspaces` option, workspaces 1–5 are
+kept alive by persistent `workspace_rule`s in `hyprland.lua`.
 
 ## Screenshot applet
 
 `Super+P` opens the rofi screenshot menu; `Ctrl+Shift+S` goes straight to an area shot. Shots are saved to `~/Pictures/Screenshot` and copied to the clipboard.
 
 - Desktop / window / area / timed shots via grim + slurp.
-- **Scroll capture** — start recording a region, scroll through the content, open the menu again to stop; frames are stitched into one tall PNG by `scrollstitch`, a small Go tool in `config/rofi/applets/bin/scrollstitch/` (auto-built on first use, needs `go`).
+- **Scroll capture** — start recording a region, scroll through the content, open the menu again to stop; the recording is piped through ffmpeg as raw RGBA straight into `scrollstitch`, a small Go tool in `config/rofi/applets/bin/scrollstitch/` that overlaps the frames into one tall PNG. Built by `deploy.sh` (falls back to building on first use, needs `go`).
 - **Screen recording** — toggle a region recording, saved to `~/Videos/Screenrecord`.
+
+`scrollstitch` reports per frame on stderr which ones it placed, skipped as duplicates, or couldn't
+match — visible when the applet is run from a terminal (`screenshot` alias), dropped on a keybind
+launch. Its matcher is covered by `stitch_test.go` (`go test ./...` in the tool's directory).
 
 ## Credits
 
