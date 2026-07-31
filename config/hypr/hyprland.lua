@@ -175,6 +175,12 @@ hl.animation({ leaf = "workspacesIn", enabled = true, speed = 1.21, bezier = "al
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
 hl.animation({ leaf = "zoomFactor", enabled = true, speed = 7, bezier = "quick" })
 
+-- Keep workspaces 1-5 alive so waybar's ext/workspaces module always shows them
+-- (that module has no persistent-workspaces option of its own).
+for i = 1, 5 do
+	hl.workspace_rule({ workspace = tostring(i), persistent = true })
+end
+
 -- Ref https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
 -- "Smart gaps" / "No gaps when only"
 -- uncomment all if you wish to use that.

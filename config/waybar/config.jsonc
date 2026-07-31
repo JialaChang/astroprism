@@ -16,7 +16,7 @@
     "modules-center": [
         // "custom/temperature",
         // "custom/light",
-        "hyprland/workspaces",
+        "ext/workspaces",
         // "backlight",
         "pulseaudio"
     ],
@@ -118,18 +118,20 @@
             "on-scroll-down": "shift_down"
         }
     },
-    "hyprland/workspaces": {
+    // Uses the ext-workspace-v1 wayland protocol instead of Hyprland's IPC.
+    // hyprland/workspaces sends the legacy `dispatch workspace N` string, which the
+    // Lua config provider rejects as a syntax error, so its clicks do nothing.
+    // Workspaces 1-5 are kept alive by persistent workspace_rules in hyprland.lua.
+    "ext/workspaces": {
         "format": "{icon}",
         "on-click": "activate",
+        "sort-by-id": true,
         "format-icons": {
             "1": "",
             "2": "󰈹",
             "3": "󰭹",
             "4": "󰎇",
             "5": "󰚩"
-        },
-        "persistent-workspaces": {
-            "*": 5
         }
     },
     "hyprland/window": {
