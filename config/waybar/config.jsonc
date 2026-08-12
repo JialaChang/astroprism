@@ -9,7 +9,7 @@
         "custom/nix",
         "clock",
         // "network",
-        "bluetooth",
+        // "bluetooth",
         "mpris"
         // "hyprland/window"
     ],
