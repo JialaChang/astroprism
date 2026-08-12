@@ -11,17 +11,22 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"io"
 	"math"
 	"os"
-	"path/filepath"
-	"runtime"
 	"sort"
+	"strconv"
 )
 
 const (
 	minShift     = 4
 	maxShiftFrac = 0.8
-	errThreshold = 500.0 // max acceptable mean squared row-profile error
+
+	// Max acceptable mean squared row-profile error.
+	// Measured on real captures, frames that genuinely scrolled score
+	// under 30 while bogus matches start around 70, so this threshold
+	// sits in the gap with roughly a 2x margin on either side.
+	errThreshold = 50.0
 )
 
 type frameProfile struct {
@@ -29,33 +34,25 @@ type frameProfile struct {
 	edge []float64 // per-row horizontal total variation (L1), a robust edge-density proxy
 }
 
-type frameResult struct {
-	path    string
-	img     *image.RGBA
-	profile frameProfile
-	err     error
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
-func loadRGBA(path string) (*image.RGBA, error) {
-	f, err := os.Open(path)
-	if err != nil {
+// readFrame reads one raw RGBA frame (width*height*4 bytes).
+// It returns io.EOF once the stream is exhausted after a complete frame.
+func readFrame(r io.Reader, width, height int) (*image.RGBA, error) {
+	buf := make([]byte, width*height*4)
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
-	defer f.Close()
-
-	img, err := png.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-	// ffmpeg's truecolor PNG already decode into *image.RGBA
-	if rgba, ok := img.(*image.RGBA); ok {
-		return rgba, nil
-	}
-	// Fallback for any other pixel format
-	b := img.Bounds()
-	rgba := image.NewRGBA(b)
-	draw.Draw(rgba, b, img, b.Min, draw.Src)
-	return rgba, nil
+	return &image.RGBA{
+		Pix:    buf,
+		Stride: width * 4,
+		Rect:   image.Rect(0, 0, width, height),
+	}, nil
 }
 
 // rowProfile computes two per-row 1D signatures used to find the vertical shift between frames:
@@ -79,10 +76,7 @@ func rowProfile(img *image.RGBA) frameProfile {
 			lumaSum += luma
 			if x > 0 {
 				d := luma - prevLuma
-				if d < 0 {
-					d = -d
-				}
-				edgeSum += d
+				edgeSum += absInt(d)
 			}
 			prevLuma = luma
 		}
@@ -93,14 +87,23 @@ func rowProfile(img *image.RGBA) frameProfile {
 	return profile
 }
 
-// findOffset searches for the shift where prev[offset:] best matches curr[:len-offset],
-// i.e. how far the content scrolled between the two frames.
-func findOffset(prev, curr frameProfile) (offset int, score float64) {
+const (
+	ratioMargin = 20  // exclude rows around the winner to find the runner-up
+	ratioMax    = 0.8 // max acceptable ratio (best / second-best)
+)
+
+// bestOffsetExcluding scans candidate offsets and returns the one with the lowest mean squared profile error.
+// Offsets within excludeRadius rows of excludeCenter are skipped;
+// pass excludeCenter = -1 to scan every candidate.
+func bestOffsetExcluding(prev, curr frameProfile, excludeCenter, excludeRadius int) (offset int, score float64) {
 	h := len(prev.mean)
 	maxShift := int(float64(h) * maxShiftFrac)
 	bestOffset := 0
 	bestErr := math.MaxFloat64
 	for offset := minShift; offset <= maxShift; offset++ {
+		if excludeCenter >= 0 && absInt(offset-excludeCenter) <= excludeRadius {
+			continue
+		}
 		n := h - offset
 		if n <= 0 {
 			continue
@@ -130,11 +133,55 @@ func findOffset(prev, curr frameProfile) (offset int, score float64) {
 	return bestOffset, bestErr
 }
 
+// findOffset searches for the shift where prev[offset:] best matches curr[:len-offset],
+// i.e. how far the content scrolled between the two frames.
+// It reports ok=false when a distinct runner-up scores nearly as well,
+// which means the content is self-similar and the winning offset carries no real evidence.
+func findOffset(prev, curr frameProfile) (offset int, score float64, ok bool) {
+	bestOffset, bestErr := bestOffsetExcluding(prev, curr, -1, 0)
+	if bestErr == math.MaxFloat64 {
+		return 0, bestErr, false
+	}
+	_, secondErr := bestOffsetExcluding(prev, curr, bestOffset, ratioMargin)
+	if secondErr == math.MaxFloat64 {
+		return bestOffset, bestErr, true
+	}
+	if secondErr == 0 || bestErr/secondErr > ratioMax {
+		return bestOffset, bestErr, false
+	}
+	return bestOffset, bestErr, true
+}
+
 const (
 	verifyRowStep   = 8
 	verifyColStep   = 16
 	verifyThreshold = 12.0 // max mean abs green diff in the overlap region
+
+	// Below this threshold the two frames are the same picture.
+	// Measured on real captures, a repeated frame scores under 0.5
+	// while anything that actually scrolled scores above 3,
+	// so this threshold sits in an empty gap: even one scrolled
+	// row displaces every glyph, there is no middle ground to land in.
+	staticThreshold = 1.0
 )
+
+// frameChanged reports whether anything moved at all between two frames.
+// A repeated frame carries no new content, but the offset search still finds a
+// plausible-looking match up near its ceiling.
+func frameChanged(prev, curr *image.RGBA) bool {
+	w := prev.Bounds().Dx()
+	h := prev.Bounds().Dy()
+	var sum, count int
+	for y := 0; y < h; y += verifyRowStep {
+		prow := prev.Pix[y*prev.Stride:]
+		crow := curr.Pix[y*curr.Stride:]
+		for x := 0; x < w; x += verifyColStep {
+			sum += absInt(int(prow[x*4+1]) - int(crow[x*4+1]))
+			count++
+		}
+	}
+	return float64(sum)/float64(count) > staticThreshold
+}
 
 // verifyOffset double-checks a candidate offset against real pixels:
 // 1D profiles can collide on self-similar content, but actual
@@ -149,10 +196,7 @@ func verifyOffset(prev, curr *image.RGBA, offset int) bool {
 		crow := curr.Pix[y*curr.Stride:]
 		for x := 0; x < w; x += verifyColStep {
 			d := int(prow[x*4+1]) - int(crow[x*4+1])
-			if d < 0 {
-				d = -d
-			}
-			sum += d
+			sum += absInt(d)
 			count++
 		}
 	}
@@ -162,105 +206,109 @@ func verifyOffset(prev, curr *image.RGBA, offset int) bool {
 	return float64(sum)/float64(count) <= verifyThreshold
 }
 
-func cropRows(img *image.RGBA, y0, y1 int) *image.RGBA {
-	b := img.Bounds()
-	out := image.NewRGBA(image.Rect(0, 0, b.Dx(), y1-y0))
-	draw.Draw(out, out.Bounds(), img, image.Point{X: b.Min.X, Y: b.Min.Y + y0}, draw.Src)
-	return out
+// stitchStats records what happened to every frame
+type stitchStats struct {
+	read       int // frames after the first
+	unchanged  int // identical to the previous frame
+	ambiguous  int // self-similar content, no distinctive offset
+	weak       int // best offset still matched poorly
+	tooSmall   int // scrolled less than minShift
+	unverified int // profiles agreed but the pixels did not
+	accepted   int
+	atCeiling  int // accepted at the top of the search range
+	maxShift   int
+	offsets    []int
+	truncated  error // stream ended in the middle of a frame
 }
 
-// decodes frames and computes their profiles in parallel across CPUs
-// while delivering results strictly in file order.
-// At most `window` decoded frames are held in memory waiting to be consumed.
-func decodeFrame(files []string, windows int) <-chan chan frameResult {
-	queue := make(chan chan frameResult, windows)
-	go func() {
-		semaphore := make(chan struct{}, runtime.NumCPU())
-		for _, path := range files {
-			ch := make(chan frameResult, 1)
-			queue <- ch // block when the window is full, bounding memory
-			semaphore <- struct{}{}
-			go func(path string) {
-				defer func() { <-semaphore }()
-				img, err := loadRGBA(path)
-				var profile frameProfile
-				if err == nil {
-					profile = rowProfile(img)
-				}
-				ch <- frameResult{path, img, profile, err}
-			}(path)
-		}
-		close(queue)
-	}()
-	return queue
+func (s stitchStats) report(out io.Writer, width, height int) {
+	// +1 restore the first frame
+	fmt.Fprintf(out, "stitched %d of %d frames -> %dx%d\n", s.accepted+1, s.read+1, width, height)
+	if dropped := s.read - s.accepted; dropped > 0 {
+		fmt.Fprintf(out, "discarded %d: %d unchanged, %d ambiguous, %d weak, %d tiny, %d mismatch\n",
+			dropped, s.unchanged, s.ambiguous, s.weak, s.tooSmall, s.unverified)
+	}
+	if len(s.offsets) > 0 {
+		sorted := append([]int(nil), s.offsets...)
+		sort.Ints(sorted)
+		fmt.Fprintf(out, "shift %d..%d px, median %d\n",
+			sorted[0], sorted[len(sorted)-1], sorted[len(sorted)/2])
+	}
+	if s.accepted == 0 {
+		fmt.Fprintln(out, "! no scroll detected, output is a single frame")
+	}
+	if s.atCeiling > 0 {
+		fmt.Fprintf(out, "! %d frame(s) hit the %d px ceiling, content may be missing\n", s.atCeiling, s.maxShift)
+	}
+	if s.ambiguous*4 > s.accepted {
+		fmt.Fprintf(out, "! %d frame(s) too self-similar to place, expect gaps\n", s.ambiguous)
+	}
+	if s.truncated != nil {
+		fmt.Fprintf(out, "! stream ended early: %v\n", s.truncated)
+	}
 }
 
-func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: scrollstitch <frames_dir> <output.png>")
-		os.Exit(1)
-	}
-	framesDir, outPath := os.Args[1], os.Args[2]
+// stitch consumes raw RGBA frames and returns the assembled image. A frame that
+// cannot be placed is skipped rather than guessed at, so the result is always
+// made of content the matcher was confident about.
+func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
+	st := stitchStats{maxShift: int(float64(height) * maxShiftFrac)}
 
-	entries, err := os.ReadDir(framesDir)
+	first, err := readFrame(r, width, height)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "read frames dir:", err)
-		os.Exit(1)
+		return nil, st, fmt.Errorf("read first frame: %w", err)
 	}
-	var files []string
-	for _, e := range entries {
-		if !e.IsDir() && filepath.Ext(e.Name()) == ".png" {
-			files = append(files, filepath.Join(framesDir, e.Name()))
-		}
-	}
-	sort.Strings(files)
-	if len(files) == 0 {
-		fmt.Fprintln(os.Stderr, "no frames found in", framesDir)
-		os.Exit(1)
-	}
-
-	first, err := loadRGBA(files[0])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "load", files[0], err)
-		os.Exit(1)
-	}
-	width := first.Bounds().Dx()
-	height := first.Bounds().Dy()
 
 	pieces := []*image.RGBA{first}
 	totalHeight := height
 	prevProfile := rowProfile(first)
 	prevFrame := first
 
-	for channel := range decodeFrame(files[1:], 16) {
-		result := <-channel
-		if result.err != nil {
-			fmt.Fprintln(os.Stderr, "skip:", result.path, result.err)
-			continue
+	for {
+		curr, err := readFrame(r, width, height)
+		if err == io.EOF {
+			break
 		}
-		curr := result.img
-		if curr.Bounds().Dx() != width || curr.Bounds().Dy() != height {
-			fmt.Fprintln(os.Stderr, "skip (size mismatch)", result.path)
+		if err != nil {
+			// Keep whatever was already stitched; a half-written frame at the
+			// end is far more likely than a corrupt stream.
+			st.truncated = err
+			break
+		}
+		st.read++
+
+		if !frameChanged(prevFrame, curr) {
+			st.unchanged++
 			continue
 		}
 
-		offset, score := findOffset(prevProfile, result.profile)
-		if score > errThreshold || offset <= minShift {
-			// No reliable new content detected
+		currProfile := rowProfile(curr)
+		offset, score, ok := findOffset(prevProfile, currProfile)
+		switch {
+		case !ok:
+			st.ambiguous++
+			continue
+		case score > errThreshold:
+			st.weak++
+			continue
+		case offset <= minShift:
+			st.tooSmall++
 			continue
 		}
 		if !verifyOffset(prevFrame, curr, offset) {
+			st.unverified++
 			continue
 		}
 
+		if offset >= st.maxShift {
+			st.atCeiling++
+		}
+		st.accepted++
+		st.offsets = append(st.offsets, offset)
 		pieces = append(pieces, cropRows(curr, height-offset, height))
 		totalHeight += offset
-		prevProfile = result.profile
+		prevProfile = currProfile
 		prevFrame = curr
-	}
-
-	if len(pieces) == 1 {
-		fmt.Fprintln(os.Stderr, "warning: no scroll detected, output is a single frame")
 	}
 
 	out := image.NewRGBA(image.Rect(0, 0, width, totalHeight))
@@ -269,6 +317,38 @@ func main() {
 		ph := p.Bounds().Dy()
 		draw.Draw(out, image.Rect(0, y, width, y+ph), p, image.Point{}, draw.Src)
 		y += ph
+	}
+	return out, st, nil
+}
+
+func cropRows(img *image.RGBA, y0, y1 int) *image.RGBA {
+	b := img.Bounds()
+	out := image.NewRGBA(image.Rect(0, 0, b.Dx(), y1-y0))
+	draw.Draw(out, out.Bounds(), img, image.Point{X: b.Min.X, Y: b.Min.Y + y0}, draw.Src)
+	return out
+}
+
+func main() {
+	if len(os.Args) != 4 {
+		fmt.Fprintln(os.Stderr, "usage: scrollstitch <width> <height> <output.png>")
+		os.Exit(1)
+	}
+	width, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "invalid width: ", err)
+		os.Exit(1)
+	}
+	height, err := strconv.Atoi(os.Args[2])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "invalid height:", err)
+		os.Exit(1)
+	}
+	outPath := os.Args[3]
+
+	out, st, err := stitch(os.Stdin, width, height)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	f, err := os.Create(outPath)
@@ -281,5 +361,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "encode png:", err)
 		os.Exit(1)
 	}
-	fmt.Printf("stitched %d frame(s) -> %dx%d\n", len(pieces), width, totalHeight)
+	st.report(os.Stderr, width, out.Bounds().Dy())
 }

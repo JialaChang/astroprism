@@ -177,6 +177,12 @@ hl.animation({ leaf = "workspacesIn", enabled = true, speed = 1.21, bezier = "al
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
 hl.animation({ leaf = "zoomFactor", enabled = true, speed = 7, bezier = "quick" })
 
+-- Keep workspaces 1-5 alive so waybar's ext/workspaces module always shows them
+-- (that module has no persistent-workspaces option of its own).
+for i = 1, 5 do
+	hl.workspace_rule({ workspace = tostring(i), persistent = true })
+end
+
 -- Ref https://wiki.hypr.land/Configuring/Basics/Workspace-Rules/
 -- "Smart gaps" / "No gaps when only"
 -- uncomment all if you wish to use that.
@@ -274,7 +280,7 @@ local closeWindowBind = hl.bind(mainMod .. " + C", hl.dsp.window.close())
 -- closeWindowBind:set_enabled(false)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
--- hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle only
 
 -- My personal keybinds
@@ -283,8 +289,8 @@ hl.bind(mainMod .. "+ B", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("bash -c 'pkill waybar || waybar & disown'"))
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(powermenu))
 -- screenshot
-hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(screenshot))
-hl.bind("CTRL + SHIFT + S", hl.dsp.exec_cmd(screenshot .. " --opt3"))
+hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(screenshot))
+hl.bind("CTRL + SHIFT + F", hl.dsp.exec_cmd(screenshot .. " --opt3"))
 -- toggle opacity
 hl.bind(mainMod .. " + CTRL + P", hl.dsp.window.tag({ tag = "peek" }))
 hl.bind(mainMod .. " + CTRL + O", hl.dsp.window.tag({ tag = "nopeek" }))

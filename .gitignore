@@ -1,12 +1,14 @@
-pkg-failed.txt
-
+# matugen output -- generated from config/matugen/templates/
 **/hypr/colors/
 **/waybar/colors.css
 **/kitty/colors/
 **/rofi/colors/
+config/starship.toml
 
 .vscode/
 __pycache__/
 target/
+**/scrollstitch/scrollstitch
 
-config/rofi/applets/bin/scrollstitch/scrollstitch
+pkg-failed.txt
+.deploy-stamps/
