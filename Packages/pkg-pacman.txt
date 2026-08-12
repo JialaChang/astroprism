@@ -26,6 +26,7 @@ fzf
 git
 grim
 grub
+grub-theme-vimix
 gst-plugin-pipewire
 gum
 htop
@@ -107,4 +108,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-07-23_14:33
+# Exported on 2026-08-12_11:25

@@ -125,7 +125,6 @@
     "ext/workspaces": {
         "format": "{icon}",
         "on-click": "activate",
-        "sort-by-id": true,
         "format-icons": {
             "1": "",
             "2": "󰈹",
