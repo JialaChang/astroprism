@@ -149,8 +149,6 @@
         "min-length": 20,
         "tooltip": false,
         "on-click": "~/.config/waybar/scripts/mpris-popup/target/release/mpris-popup",
-        // uncomment below if you want to use python
-        // "on-click": "~/.config/waybar/scripts/mpris-popup/mpris-popup.py",
         "on-click-right": "playerctl play-pause"
     },
     "pulseaudio": {

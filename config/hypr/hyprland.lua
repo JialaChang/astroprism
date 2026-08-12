@@ -391,6 +391,16 @@ hl.window_rule({
 -- })
 -- overlayLayerRule:set_enabled(false)
 
+-- waybar's mpris popup hangs off the bar, so slide it in and out of the top
+-- edge rather than using the global fade. The namespace is set by the popup
+-- itself (LAYER_NAMESPACE in waybar/scripts/mpris-popup/src/main.rs).
+hl.layer_rule({
+	name = "mpris-popup-anim",
+	match = { namespace = "^mpris-popup$" },
+
+	animation = "slide",
+})
+
 -- Hyprland-run windowrule
 hl.window_rule({
 	name = "move-hyprland-run",
