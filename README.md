@@ -131,14 +131,14 @@ kept alive by persistent `workspace_rule`s in `hyprland.lua`.
 
 ## Screenshot applet
 
-`Super+P` opens the rofi screenshot menu; `Ctrl+Shift+S` goes straight to an area shot. Shots are saved to `~/Pictures/Screenshot` and copied to the clipboard.
+`Super+F` opens the rofi screenshot menu; `Ctrl+Shift+F` goes straight to an area shot. Shots are saved to `~/Pictures/Screenshot` and copied to the clipboard.
 
 - Desktop / window / area / timed shots via grim + slurp.
 - **Scroll capture** — start recording a region, scroll through the content, open the menu again to stop; the recording is piped through ffmpeg as raw RGBA straight into `scrollstitch`, a small Go tool in `config/rofi/applets/bin/scrollstitch/` that overlaps the frames into one tall PNG. Built by `deploy.sh` (falls back to building on first use, needs `go`).
 - **Screen recording** — toggle a region recording, saved to `~/Videos/Screenrecord`.
 
 `scrollstitch` reports per frame on stderr which ones it placed, skipped as duplicates, or couldn't
-match — visible when the applet is run from a terminal (`screenshot` alias), dropped on a keybind
+match — visible when the applet is run from a terminal (`screenshot --opt5` alias), dropped on a keybind
 launch. Its matcher is covered by `stitch_test.go` (`go test ./...` in the tool's directory).
 
 ## Credits

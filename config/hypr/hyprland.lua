@@ -278,7 +278,7 @@ local closeWindowBind = hl.bind(mainMod .. " + C", hl.dsp.window.close())
 -- closeWindowBind:set_enabled(false)
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
--- hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle only
 
 -- My personal keybinds
@@ -287,8 +287,8 @@ hl.bind(mainMod .. "+ B", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("bash -c 'pkill waybar || waybar & disown'"))
 hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(powermenu))
 -- screenshot
-hl.bind(mainMod .. " + P", hl.dsp.exec_cmd(screenshot))
-hl.bind("CTRL + SHIFT + S", hl.dsp.exec_cmd(screenshot .. " --opt3"))
+hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(screenshot))
+hl.bind("CTRL + SHIFT + F", hl.dsp.exec_cmd(screenshot .. " --opt3"))
 -- toggle opacity
 hl.bind(mainMod .. " + CTRL + P", hl.dsp.window.tag({ tag = "peek" }))
 hl.bind(mainMod .. " + CTRL + O", hl.dsp.window.tag({ tag = "nopeek" }))

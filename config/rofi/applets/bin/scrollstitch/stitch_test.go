@@ -11,11 +11,6 @@ import (
 // feeds the resulting frames back in. The master is the ground truth: a correct
 // stitch reproduces it exactly, so most assertions are pixel comparisons rather
 // than tolerances.
-//
-// Each master below is a hypothesis about how the matcher could fail, not just
-// another picture. Before adding one, ask what it would catch that the existing
-// ones do not: reintroduce a known bug and check the new test is the only one
-// that notices. A test that catches nothing new is upkeep without cover.
 
 // --- masters ---------------------------------------------------------------
 
