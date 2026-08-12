@@ -154,7 +154,7 @@ window#waybar {
 }
 
 #battery {
-  border-top: 3px solid @primary;
+  border-top: 3px solid @secondary;
   font-weight: bold;
 }
 
@@ -177,12 +177,13 @@ window#waybar {
 }
 
 #battery.charging {
-  color: @primary;
+  border-top: 3px solid @success;
+  color: @success;
 }
 
 #battery.critical:not(.charging) {
-  background-color: @error;
-  color: @on_error;
+  border-top: 3px solid @error;
+  color: @error;
 }
 
 #clock:hover,

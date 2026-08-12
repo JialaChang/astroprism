@@ -1,12 +1,13 @@
 // Author: JialaChang
 
-// Floating GTK popup for waybar's mpris module (click-to-open, since waybar
-// has no hover-exec): shows cover art, title/artist, a seek bar, and
-// prev/play-pause/next controls, driven through playerctl. Refreshes are
-// triggered by D-Bus PropertiesChanged signals from playerctld rather than
-// polling; only the seek bar's per-second advance is a local timer.
+// Floating GTK popup for waybar's mpris module (click-to-open, since waybar has no hover-exec):
+// shows the player name, cover art, title/artist, a seek bar, and prev/play-pause/next
+// controls, driven through playerctl; clicking the player name focuses that app's own window.
+// Refreshes are triggered by D-Bus signals from playerctld — PropertiesChanged, plus Seeked
+// for the position MPRIS never notifies on — rather than polling; only the seek bar's
+// per-second advance is a local timer. Remote cover art is fetched off the main thread.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
@@ -16,22 +17,49 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 const PIDFILE: &str = "/tmp/waybar-mpris-popup.pid";
-const ART_SIZE: i32 = 88;
 const HIDE_DELAY_MS: u64 = 3000;
-const POPUP_WIDTH: i32 = 420;
-const POPUP_HEIGHT: i32 = 190;
+
+const ART_SIZE: i32 = 84;
+/// Corner rounding of the cover art, in pixels.
+const ART_RADIUS: f64 = 12.0;
+const POPUP_WIDTH: i32 = 380;
+const POPUP_HEIGHT: i32 = 120;
 /// Gap between the top of the screen and the popup (i.e. distance below the bar).
 const POPUP_TOP_MARGIN: i32 = 10;
-/// Approximate screen-left offset of the mpris module in modules-left.
-const POPUP_LEFT_MARGIN: i32 = 230;
+/// Approximate screen-left offset of the mpris module in modules-left,
+/// adjust the value for your monitor.
+const POPUP_LEFT_MARGIN: i32 = 275;
 
 // playerctld proxies whichever player is currently active under one fixed bus name
 const MPRIS_BUS_NAME: &str = "org.mpris.MediaPlayer2.playerctld";
 const MPRIS_OBJECT_PATH: &str = "/org/mpris/MediaPlayer2";
 const DBUS_PROPERTIES_IFACE: &str = "org.freedesktop.DBus.Properties";
+const MPRIS_PLAYER_IFACE: &str = "org.mpris.MediaPlayer2.Player";
+const MPRIS_BUS_PREFIX: &str = "org.mpris.MediaPlayer2.";
+
+/// Wayland layer-surface namespace; what compositor layer rules match on.
+const LAYER_NAMESPACE: &str = "mpris-popup";
 
 /// Signal Termination of linux
 const SIGTERM: i32 = 15;
+
+/// Everything a refresh needs, in one playerctl call instead of one per field —
+/// each spawn costs ~10ms on the UI thread. Fields are separated by an ASCII
+/// unit separator, which playerctl passes through and metadata never contains.
+const METADATA_FORMAT: &str = concat!(
+    "{{playerName}}\u{1f}",
+    "{{title}}\u{1f}",
+    "{{artist}}\u{1f}",
+    "{{mpris:artUrl}}\u{1f}",
+    "{{mpris:length}}\u{1f}",
+    "{{position}}\u{1f}",
+    "{{xesam:url}}",
+);
+const METADATA_SEP: char = '\u{1f}';
+
+/// Cache sentinel for "no cover on screen"; never equal to a real art URL,
+/// including the empty one, so the next refresh always tries again.
+const ART_URL_NONE: &str = "\u{0}";
 
 fn expand_home(path: &str) -> String {
     match path.strip_prefix("~/") {
@@ -83,6 +111,97 @@ fn scale_cover(pixbuf: &Pixbuf, size: i32) -> Option<Pixbuf> {
     Some(scaled.new_subpixbuf(x, y, size, size))
 }
 
+/// Round off the cover art's corners. GTK3 can't clip a GtkImage's pixbuf with
+/// CSS, so the rounding has to be painted into the pixbuf itself.
+fn round_pixbuf(pixbuf: &Pixbuf, radius: f64) -> Option<Pixbuf> {
+    use gdk::cairo::{Context, Format, ImageSurface};
+    use gdk::prelude::GdkContextExt;
+    use std::f64::consts::{FRAC_PI_2, PI};
+
+    let (w, h) = (pixbuf.width(), pixbuf.height());
+    let surface = ImageSurface::create(Format::ARgb32, w, h).ok()?;
+    let cr = Context::new(&surface).ok()?;
+    let (w, h) = (w as f64, h as f64);
+    let r = radius.min(w / 2.0).min(h / 2.0);
+
+    cr.new_sub_path();
+    cr.arc(w - r, r, r, -FRAC_PI_2, 0.0);
+    cr.arc(w - r, h - r, r, 0.0, FRAC_PI_2);
+    cr.arc(r, h - r, r, FRAC_PI_2, PI);
+    cr.arc(r, r, r, PI, PI + FRAC_PI_2);
+    cr.close_path();
+    cr.clip();
+
+    cr.set_source_pixbuf(pixbuf, 0.0, 0.0);
+    cr.paint().ok()?;
+    drop(cr);
+
+    gdk::pixbuf_get_from_surface(&surface, 0, 0, w as i32, h as i32)
+}
+
+/// PID of the process behind a player, by asking the bus who owns its name.
+fn player_pid(player_name: &str) -> Option<u32> {
+    let conn = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE).ok()?;
+    let call = |method: &str, args: Option<&glib::Variant>| {
+        conn.call_sync(
+            Some("org.freedesktop.DBus"),
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            method,
+            args,
+            None,
+            gio::DBusCallFlags::NONE,
+            1000,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+    };
+
+    let names: Vec<String> = call("ListNames", None)?.child_value(0).get()?;
+    // playerctl reports the base name ("firefox") while the bus name carries an
+    // instance suffix ("…firefox.instance_1_96"), so match on both forms.
+    let wanted = format!("{MPRIS_BUS_PREFIX}{player_name}");
+    let instance_prefix = format!("{wanted}.");
+    let bus_name = names
+        .into_iter()
+        .find(|n: &String| *n == wanted || n.starts_with(&instance_prefix))?;
+
+    call("GetConnectionUnixProcessID", Some(&(bus_name,).to_variant()))?
+        .child_value(0)
+        .get()
+}
+
+/// Focus the player's own window. MPRIS has a Raise method for this, but on
+/// Wayland a client cannot raise itself without an activation token and it does
+/// nothing here, so go through the compositor. Hyprland's Lua config mode also
+/// rejects the old `hyprctl dispatch focuswindow` syntax, hence `eval`.
+fn focus_player_window(player_name: &str) -> bool {
+    let Some(pid) = player_pid(player_name) else {
+        return false;
+    };
+    Command::new("hyprctl")
+        .args([
+            "eval",
+            &format!("hl.dispatch(hl.dsp.focus({{ window = \"pid:{pid}\" }}))"),
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok()
+}
+
+/// Nerd Font glyph for a player, kept in sync with `mpris.player-icons` in config.jsonc.
+fn player_icon(player_name: &str) -> &'static str {
+    let name = player_name.to_ascii_lowercase();
+    if name.starts_with("spotify") {
+        "\u{f1bc}"
+    } else if name.starts_with("firefox") {
+        "\u{e745}"
+    } else {
+        "\u{f144}"
+    }
+}
+
 fn youtube_thumbnail_url(page_url: &str) -> String {
     if page_url.is_empty() {
         return String::new();
@@ -126,7 +245,9 @@ fn path_from_file_url(url: &str) -> String {
 
 #[derive(Clone)]
 struct Widgets {
+    window: gtk::Window,
     art: gtk::Image,
+    status_label: gtk::Label,
     title_label: gtk::Label,
     artist_label: gtk::Label,
     pos_label: gtk::Label,
@@ -143,29 +264,127 @@ struct Shared {
     playing: Rc<Cell<bool>>,
     position: Rc<Cell<f64>>,
     length: Rc<Cell<f64>>,
+    /// Art URL the popup is currently showing or fetching, so refreshes
+    /// triggered by play/pause or a position change don't re-fetch the same
+    /// cover, and so a late download can tell whether it is still wanted.
+    art_url: Rc<RefCell<String>>,
+    /// Downloaded cover bytes on their way back to the main thread.
+    art_tx: glib::Sender<(String, Vec<u8>)>,
+    /// Player behind the current track, for the click-to-focus label.
+    player_name: Rc<RefCell<String>>,
 }
 
-fn set_art(widgets: &Widgets, url: &str) {
-    let pixbuf = if url.is_empty() {
-        None
-    } else if url.starts_with("file://") {
+fn set_art(widgets: &Widgets, shared: &Shared, url: &str) {
+    if *shared.art_url.borrow() == url {
+        return;
+    }
+    shared.art_url.replace(url.to_string());
+
+    if url.starts_with("http://") || url.starts_with("https://") {
+        // Downloads block for ~120ms, which on the main thread would freeze the
+        // whole popup on every track change. Fetch on a worker thread and paint
+        // when the bytes come back; the old cover stays up in the meantime.
+        let tx = shared.art_tx.clone();
+        let url = url.to_string();
+        std::thread::spawn(move || {
+            let data = fetch_url(&url).unwrap_or_default();
+            let _ = tx.send((url, data));
+        });
+        return;
+    }
+
+    // Local files decode in a millisecond or two, so they stay inline.
+    let pixbuf = if url.starts_with("file://") {
         Pixbuf::from_file(path_from_file_url(url))
             .ok()
             .and_then(|raw| scale_cover(&raw, ART_SIZE))
-    } else if url.starts_with("http://") || url.starts_with("https://") {
-        fetch_url(url).and_then(|data| {
-            let loader = gdk_pixbuf::PixbufLoader::new();
-            loader.write(&data).ok()?;
-            loader.close().ok()?;
-            loader.pixbuf().and_then(|raw| scale_cover(&raw, ART_SIZE))
-        })
     } else {
         None
     };
+    apply_art(widgets, shared, url, pixbuf);
+}
 
-    match pixbuf {
+/// Paint a cover that has finished loading, or fall back to the placeholder.
+fn apply_art(widgets: &Widgets, shared: &Shared, url: &str, pixbuf: Option<Pixbuf>) {
+    match pixbuf.and_then(|p| round_pixbuf(&p, ART_RADIUS).or(Some(p))) {
         Some(p) => widgets.art.set_from_pixbuf(Some(&p)),
-        None => widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog),
+        None => {
+            widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
+            // Only cache the miss when there was nothing to load in the first
+            // place, so a failed download is retried on the next refresh.
+            if !url.is_empty() {
+                shared.art_url.replace(ART_URL_NONE.to_string());
+            }
+        }
+    }
+}
+
+/// Set the pointer's shape over the popup; `None` restores the inherited one.
+fn set_cursor(window: &gtk::Window, name: Option<&str>) {
+    let Some(gdk_window) = WidgetExt::window(window) else {
+        return;
+    };
+    let cursor = name.and_then(|name| {
+        gdk::Display::default().and_then(|display| gdk::Cursor::from_name(&display, name))
+    });
+    gdk_window.set_cursor(cursor.as_ref());
+}
+
+/// Whether a leave event means the pointer really left the popup. Moving onto
+/// one of the window's own children — a button, the seek bar — fires a leave
+/// event too, tagged Inferior; treating those as exits closed the popup under
+/// the pointer. Anything else counts as an exit: closing early is recoverable.
+fn is_pointer_exit(ev: &gdk::EventCrossing) -> bool {
+    ev.detail() != gdk::NotifyType::Inferior
+}
+
+fn decode_art(data: &[u8]) -> Option<Pixbuf> {
+    let loader = gdk_pixbuf::PixbufLoader::new();
+    loader.write(data).ok()?;
+    loader.close().ok()?;
+    loader.pixbuf().and_then(|raw| scale_cover(&raw, ART_SIZE))
+}
+
+/// "{player icon}  {PLAYER NAME}", mirroring how the bar module labels itself.
+/// Also records the player so clicking the label can find its window.
+fn set_status_label(widgets: &Widgets, shared: &Shared, player_name: &str) {
+    shared.player_name.replace(player_name.to_string());
+    // {{playerName}} reports the base name ("firefox"), but playerctl's own
+    // player list carries an instance suffix ("firefox.instance_1_88"); drop it
+    // in case a future playerctl hands one through here too.
+    let short_name = player_name.split('.').next().unwrap_or(player_name);
+    let label = if short_name.is_empty() {
+        "NO PLAYER".to_string()
+    } else {
+        short_name.to_uppercase()
+    };
+    widgets.status_label.set_markup(&format!(
+        "{}  <span letter_spacing=\"900\">{}</span>",
+        player_icon(player_name),
+        glib::markup_escape_text(&label),
+    ));
+}
+
+fn set_playpause_icon(widgets: &Widgets, is_playing: bool) {
+    let icon = if is_playing {
+        "media-playback-pause-symbolic"
+    } else {
+        "media-playback-start-symbolic"
+    };
+    widgets.playpause_btn.set_image(Some(&gtk::Image::from_icon_name(
+        Some(icon),
+        gtk::IconSize::LargeToolbar,
+    )));
+}
+
+/// Mirrors `#mpris.paused` in the bar's stylesheet: the player label, the seek
+/// bar and the play button all drop back to neutral colours while paused.
+fn set_paused_class(widgets: &Widgets, paused: bool) {
+    let ctx = widgets.window.style_context();
+    if paused {
+        ctx.add_class("paused");
+    } else {
+        ctx.remove_class("paused");
     }
 }
 
@@ -177,9 +396,12 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     }
 
     if !has_player {
+        set_status_label(widgets, shared, "");
+        set_paused_class(widgets, true);
+        set_playpause_icon(widgets, false);
         widgets.title_label.set_text("No media player");
         widgets.artist_label.set_text("");
-        widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
+        set_art(widgets, shared, "");
         widgets.seek_scale.set_sensitive(false);
         widgets.pos_label.set_text("0:00");
         widgets.dur_label.set_text("0:00");
@@ -189,37 +411,37 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
         return;
     }
 
-    let title = playerctl(&["metadata", "title"]);
-    let title = if title.is_empty() { "Unknown title" } else { &title };
-    let artist = playerctl(&["metadata", "artist"]);
+    let metadata = playerctl(&["metadata", "--format", METADATA_FORMAT]);
+    let mut fields = metadata.split(METADATA_SEP);
+    let mut next_field = move || fields.next().unwrap_or_default();
+    let (player_name, title, artist) = (next_field(), next_field(), next_field());
+    let (art_url, length_str, position_str, page_url) =
+        (next_field(), next_field(), next_field(), next_field());
+
+    set_status_label(widgets, shared, player_name);
+
+    let title = if title.is_empty() { "Unknown title" } else { title };
     widgets
         .title_label
         .set_markup(&format!("<b>{}</b>", glib::markup_escape_text(title)));
-    widgets.artist_label.set_text(&artist);
+    widgets.artist_label.set_text(artist);
 
     let is_playing = status == "Playing";
-    let icon = if is_playing {
-        "media-playback-pause-symbolic"
-    } else {
-        "media-playback-start-symbolic"
-    };
-    widgets.playpause_btn.set_image(Some(&gtk::Image::from_icon_name(
-        Some(icon),
-        gtk::IconSize::LargeToolbar,
-    )));
+    set_paused_class(widgets, !is_playing);
+    set_playpause_icon(widgets, is_playing);
 
-    let mut art_url = playerctl(&["metadata", "mpris:artUrl"]);
-    if art_url.is_empty() {
+    let art_url = if art_url.is_empty() {
         // Firefox doesn't expose mpris:artUrl for YouTube;
         // derive a thumbnail from the page URL instead.
-        art_url = youtube_thumbnail_url(&playerctl(&["metadata", "xesam:url"]));
-    }
-    set_art(widgets, &art_url);
+        youtube_thumbnail_url(page_url)
+    } else {
+        art_url.to_string()
+    };
+    set_art(widgets, shared, &art_url);
 
-    let length_str = playerctl(&["metadata", "mpris:length"]);
-    // the unit of mpris:length is μs
+    // the unit of mpris:length and {{position}} is μs
     let length = length_str.parse::<f64>().unwrap_or_default() / 1_000_000.0;
-    let position: f64 = playerctl(&["position"]).parse().unwrap_or_default();
+    let position = position_str.parse::<f64>().unwrap_or_default() / 1_000_000.0;
 
     shared.playing.set(is_playing);
     shared.length.set(length);
@@ -256,6 +478,24 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
         );
     }
     {
+        // MPRIS marks Position as non-notifying: seeking emits Seeked on the
+        // player interface and no PropertiesChanged at all, so without this the
+        // popup never learns about a seek — including its own.
+        let widgets = widgets.clone();
+        let shared = shared.clone();
+        conn.signal_subscribe(
+            Some(MPRIS_BUS_NAME),
+            Some(MPRIS_PLAYER_IFACE),
+            Some("Seeked"),
+            Some(MPRIS_OBJECT_PATH),
+            None,
+            gio::DBusSignalFlags::NONE,
+            move |_conn, _sender, _path, _iface, _signal, _params| {
+                refresh(&widgets, &shared);
+            },
+        );
+    }
+    {
         conn.signal_subscribe(
             Some("org.freedesktop.DBus"),
             Some("org.freedesktop.DBus"),
@@ -277,6 +517,9 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
 fn build_window() -> gtk::Window {
     let window = gtk::Window::new(gtk::WindowType::Toplevel);
     window.init_layer_shell();
+    // Own namespace instead of the default "gtk-layer-shell", so compositor
+    // rules (animations, blur) can target this popup and nothing else.
+    window.set_namespace(LAYER_NAMESPACE);
     window.set_layer(Layer::Overlay);
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Left, true);
@@ -299,21 +542,40 @@ fn build_window() -> gtk::Window {
 
     let outer = gtk::Box::new(gtk::Orientation::Vertical, 10);
     outer.set_margin_top(14);
-    outer.set_margin_bottom(14);
+    outer.set_margin_bottom(12);
     outer.set_margin_start(16);
     outer.set_margin_end(16);
     window.add(&outer);
 
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 14);
     outer.pack_start(&row, true, true, 0);
 
     let art = gtk::Image::new();
     art.set_size_request(ART_SIZE, ART_SIZE);
+    art.set_valign(gtk::Align::Center);
     row.pack_start(&art, false, false, 0);
 
-    let text_box = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    let text_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
     text_box.set_valign(gtk::Align::Center);
     row.pack_start(&text_box, true, true, 0);
+
+    let status_label = gtk::Label::new(None);
+    status_label.set_xalign(0.0);
+    status_label.style_context().add_class("status");
+    // Ellipsizing makes the label's minimum width one ellipsis wide, which the
+    // button around it would then happily shrink to; keep a floor under it.
+    status_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    status_label.set_width_chars(15);
+
+    // A button rather than a bare label, so hover states and clicks come for
+    // free; the CSS strips the button chrome so it still reads as a label.
+    let player_btn = gtk::Button::new();
+    player_btn.set_relief(gtk::ReliefStyle::None);
+    player_btn.set_halign(gtk::Align::Start);
+    player_btn.set_margin_bottom(2);
+    player_btn.style_context().add_class("player-link");
+    player_btn.add(&status_label);
+    text_box.pack_start(&player_btn, false, false, 0);
 
     let title_label = gtk::Label::new(None);
     title_label.set_xalign(0.0);
@@ -347,28 +609,31 @@ fn build_window() -> gtk::Window {
     dur_label.style_context().add_class("time");
     seek_row.pack_start(&dur_label, false, false, 0);
 
-    let controls = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    let controls = gtk::Box::new(gtk::Orientation::Horizontal, 4);
     controls.set_halign(gtk::Align::Center);
     outer.pack_start(&controls, false, false, 0);
 
-    let make_button = |icon_name: &str| -> gtk::Button {
+    let make_button = |icon_name: &str, size: gtk::IconSize| -> gtk::Button {
         let btn = gtk::Button::new();
-        btn.set_image(Some(&gtk::Image::from_icon_name(
-            Some(icon_name),
-            gtk::IconSize::LargeToolbar,
-        )));
+        btn.set_image(Some(&gtk::Image::from_icon_name(Some(icon_name), size)));
+        btn.set_relief(gtk::ReliefStyle::None);
         btn.style_context().add_class("mpris-btn");
         btn
     };
-    let prev_btn = make_button("media-skip-backward-symbolic");
-    let playpause_btn = make_button("media-playback-start-symbolic");
-    let next_btn = make_button("media-skip-forward-symbolic");
+    // Skip buttons sit a size below play/pause so the accent button leads.
+    let prev_btn = make_button("media-skip-backward-symbolic", gtk::IconSize::Button);
+    let playpause_btn = make_button("media-playback-start-symbolic", gtk::IconSize::LargeToolbar);
+    // The accent-filled button, styled after the mpris module in the bar.
+    playpause_btn.style_context().add_class("play");
+    let next_btn = make_button("media-skip-forward-symbolic", gtk::IconSize::Button);
     for b in [&prev_btn, &playpause_btn, &next_btn] {
         controls.pack_start(b, false, false, 0);
     }
 
     let widgets = Widgets {
+        window: window.clone(),
         art,
+        status_label,
         title_label,
         artist_label,
         pos_label,
@@ -378,12 +643,59 @@ fn build_window() -> gtk::Window {
         playpause_btn: playpause_btn.clone(),
         next_btn: next_btn.clone(),
     };
+    // Deprecated in favour of async channels, which would mean pulling in
+    // async-channel and a futures executor for one message type; revisit when
+    // this moves to glib 0.19+, where the old API is gone.
+    #[allow(deprecated)]
+    let (art_tx, art_rx) = glib::MainContext::channel::<(String, Vec<u8>)>(glib::Priority::DEFAULT);
     let shared = Shared {
         seeking: Rc::new(Cell::new(false)),
         playing: Rc::new(Cell::new(false)),
         position: Rc::new(Cell::new(0.0)),
         length: Rc::new(Cell::new(0.0)),
+        art_url: Rc::new(RefCell::new(ART_URL_NONE.to_string())),
+        art_tx,
+        player_name: Rc::new(RefCell::new(String::new())),
     };
+
+    {
+        let shared = shared.clone();
+        player_btn.connect_clicked(move |_| {
+            let player_name = shared.player_name.borrow().clone();
+            if !player_name.is_empty() && focus_player_window(&player_name) {
+                // The popup has done its job once you're looking at the player.
+                gtk::main_quit();
+            }
+        });
+    }
+    // Hand cursor over the label, the only hint that it is clickable.
+    {
+        let window = window.clone();
+        player_btn.connect_enter_notify_event(move |_, _| {
+            set_cursor(&window, Some("pointer"));
+            glib::Propagation::Proceed
+        });
+    }
+    {
+        let window = window.clone();
+        player_btn.connect_leave_notify_event(move |_, _| {
+            set_cursor(&window, None);
+            glib::Propagation::Proceed
+        });
+    }
+
+    {
+        let widgets = widgets.clone();
+        let shared = shared.clone();
+        art_rx.attach(None, move |(url, data)| {
+            // Skipping through tracks can leave several downloads in flight;
+            // only the one still wanted gets painted, whatever order they land in.
+            if *shared.art_url.borrow() == url {
+                apply_art(&widgets, &shared, &url, decode_art(&data));
+            }
+            glib::ControlFlow::Continue
+        });
+    }
 
     prev_btn.connect_clicked(|_| {
         playerctl(&["previous"]);
@@ -392,10 +704,19 @@ fn build_window() -> gtk::Window {
         let widgets = widgets.clone();
         let shared = shared.clone();
         playpause_btn.connect_clicked(move |_| {
+            // Flip the button before asking the player to, so the click feels
+            // instant; the D-Bus signal that follows confirms the real state,
+            // and the timer below covers players that never emit one.
+            let is_playing = !shared.playing.get();
+            shared.playing.set(is_playing);
+            set_playpause_icon(&widgets, is_playing);
+            set_paused_class(&widgets, !is_playing);
+
             playerctl(&["play-pause"]);
+
             let widgets = widgets.clone();
             let shared = shared.clone();
-            glib::source::timeout_add_local_once(std::time::Duration::from_millis(50), move || {
+            glib::source::timeout_add_local_once(std::time::Duration::from_millis(200), move || {
                 refresh(&widgets, &shared);
             });
         });
@@ -405,7 +726,18 @@ fn build_window() -> gtk::Window {
     });
 
     {
+        let widgets_seek = widgets.clone();
+        let shared_seek = shared.clone();
         widgets.seek_scale.connect_change_value(move |_, _, value| {
+            // Keep the local model in step with the drag. Without this the
+            // per-second tick keeps counting on from the pre-seek position and
+            // drags the handle back to where it started.
+            // Players that report no length leave the range open-ended.
+            let length = shared_seek.length.get();
+            let value = if length > 0.0 { value.clamp(0.0, length) } else { value.max(0.0) };
+            shared_seek.position.set(value);
+            widgets_seek.pos_label.set_text(&fmt_time(value));
+
             playerctl(&["position", &value.to_string()]);
             glib::Propagation::Proceed
         });
@@ -474,8 +806,10 @@ fn build_window() -> gtk::Window {
     }
     {
         let start_hide_timer = start_hide_timer.clone();
-        window.connect_leave_notify_event(move |_, _| {
-            start_hide_timer();
+        window.connect_leave_notify_event(move |_, ev| {
+            if is_pointer_exit(ev) {
+                start_hide_timer();
+            }
             glib::Propagation::Proceed
         });
     }

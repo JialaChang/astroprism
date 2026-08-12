@@ -158,6 +158,7 @@ deploy_all() {
 
   deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset"
   deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend"
+  deploy "$ROOT_DIR/local/bin/prime-run" "$HOME/.local/bin/prime-run"
 
   deploy "$ROOT_DIR/bashrc" "$HOME/.bashrc"
   deploy "$ROOT_DIR/zshrc" "$HOME/.zshrc"

@@ -14,10 +14,6 @@
   <img src="./Docs/rofi.png" width="48%" alt="rofi launcher">
   <img src="./Docs/music.png" width="48%" alt="waybar mpris popup">
 </p>
-<p align="center">
-  <img src="./Docs/laptop_ff.png" width="48%" alt="firefox">
-  <img src="./Docs/laptop_myweb.png" width="48%" alt="my website">
-</p>
 
 ##  Features
 
@@ -122,7 +118,6 @@ wallset (rofi picker with previews)
 Click the mpris module → a popup with cover art and playback controls.
 
 - Active version: **Rust** (`config/waybar/scripts/mpris-popup/`), built by `deploy.sh` (waybar's `on-click` points at `target/release/mpris-popup`).
-- The original Python version (`mpris-popup.py`) is kept around and can be switched back in `waybar/config.jsonc`.
 
 The workspaces module is `ext/workspaces` (the ext-workspace-v1 protocol), not `hyprland/workspaces`:
 the latter clicks send Hyprland's legacy `dispatch workspace N` string, which the Lua config provider

@@ -1,36 +1,73 @@
 @import url("colors.css");
 
+/*
+ * Styling for the mpris popup, built from the same pieces as the bar itself:
+ * the surface colours from colors.css, @primary as the accent and the bar's
+ * hover highlights. Unlike the bar's modules the popup floats free, so it is
+ * rounded on all four sides instead of hanging off the top edge as a tab.
+ * The `.paused` class is set on the window by the popup itself and mirrors
+ * `#mpris.paused` in style.css.
+ */
+
+* {
+  font-family: "JetBrains Nerd Font", "Iosevka Nerd Font";
+  font-size: 12px;
+  min-height: 0;
+}
+
 window.mpris-popup {
-  background-color: alpha(@surface_container, 0.85);
-  border-radius: 16px;
-  border: 1px solid alpha(@outline_variant, 0.4);
+  background-color: alpha(@surface_container, 0.97);
+  color: @on_surface;
+  border: 1px solid alpha(@outline_variant, 0.6);
+  border-radius: 18px;
+}
+
+/* Player icon + name, echoing the bar module's "{player_icon} {dynamic}" */
+.mpris-popup .status {
+  color: @primary;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+window.mpris-popup.paused .status {
+  color: @on_surface_variant;
+}
+
+/* Clicking the player label focuses that app's window, so it gets a hover
+   highlight; the button chrome itself is stripped so it still reads as text. */
+.player-link {
+  background: none;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  padding: 0 4px;
+  margin: 0 -4px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.player-link:hover {
+  background: alpha(@on_surface, 0.1);
+}
+
+.player-link:hover .status {
+  color: @primary_fixed;
+}
+
+window.mpris-popup.paused .player-link:hover .status {
+  color: @on_surface;
 }
 
 .mpris-popup .title {
   color: @on_surface;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .mpris-popup .artist {
   color: @on_surface_variant;
-  font-size: 12px;
-}
-
-.mpris-btn {
-  background: @surface_container_high;
-  border-radius: 999px;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 4px;
-  color: @on_surface;
-}
-
-.mpris-btn:hover {
-  background: @surface_container_highest;
-}
-
-.mpris-btn:disabled {
-  color: alpha(@on_surface, 0.3);
+  font-size: 11px;
 }
 
 .mpris-popup .time {
@@ -38,22 +75,105 @@ window.mpris-popup {
   font-size: 10px;
 }
 
-.mpris-seek trough {
-  min-height: 4px;
-  border-radius: 999px;
-  background-color: @surface_container_high;
+/* Skip buttons stay flat until hovered, like the workspace buttons */
+.mpris-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: @on_surface_variant;
+  border-radius: 10px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 2px 8px;
+  transition: all 0.2s ease;
 }
 
+.mpris-btn:hover {
+  background: alpha(@on_surface, 0.1);
+  color: @on_surface;
+}
+
+.mpris-btn:disabled {
+  background: transparent;
+  color: alpha(@on_surface, 0.25);
+}
+
+/* Play/pause carries the accent, as the mpris module does in the bar */
+.mpris-btn.play {
+  background: alpha(@primary, 0.15);
+  color: @primary;
+  border-radius: 999px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 2px;
+  margin: 0 4px;
+}
+
+.mpris-btn.play:hover {
+  background: alpha(@primary, 0.28);
+}
+
+window.mpris-popup.paused .mpris-btn.play {
+  background: alpha(@on_surface, 0.08);
+  color: @on_surface;
+}
+
+window.mpris-popup.paused .mpris-btn.play:hover {
+  background: alpha(@on_surface, 0.16);
+}
+
+.mpris-seek {
+  margin: 0 6px;
+  padding: 0;
+}
+
+.mpris-seek trough {
+  min-height: 5px;
+  border: none;
+  border-radius: 999px;
+  background-color: alpha(@on_surface, 0.12);
+}
+
+/* The stock theme outlines the filled part in a darker shade of the selection
+   colour; drop it so the bar stays a flat accent line. */
 .mpris-seek highlight {
+  border: none;
   border-radius: 999px;
   background-color: @primary;
+  background-image: none;
+  box-shadow: none;
+}
+
+window.mpris-popup.paused .mpris-seek highlight {
+  background-color: @outline;
 }
 
 .mpris-seek slider {
-  min-width: 10px;
-  min-height: 10px;
+  min-width: 11px;
+  min-height: 11px;
   margin: -4px 0;
+  border: none;
   border-radius: 999px;
   background-color: @primary;
+  background-image: none;
   box-shadow: none;
+  transition: box-shadow 0.15s ease;
+}
+
+/* Halo on hover, echoing the bar's hover highlights */
+.mpris-seek:hover slider {
+  box-shadow: 0 0 0 4px alpha(@primary, 0.2);
+}
+
+window.mpris-popup.paused .mpris-seek slider {
+  background-color: @outline;
+}
+
+window.mpris-popup.paused .mpris-seek:hover slider {
+  box-shadow: 0 0 0 4px alpha(@outline, 0.2);
+}
+
+.mpris-seek:disabled trough,
+.mpris-seek:disabled highlight {
+  background-color: alpha(@on_surface, 0.08);
 }
