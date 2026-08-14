@@ -44,13 +44,27 @@ window#waybar {
 #cava,
 #mpris,
 #workspaces {
-  background: @surface_container;
+  /* background-color, not the shorthand: it would reset background-image. */
+  background-color: @surface_container;
   color: @on_surface;
   margin: 0 4px;
   padding: 4px 12px;
   border-radius: 0 0 12px 12px;
   border-top: 3px solid transparent;
-  transition: all 0.2s ease;
+
+  /* Sweep: band parked off-frame, :hover slides it to 0%.
+     Ends on alpha(...,0), not `transparent` -- that's transparent black. */
+  background-image: linear-gradient(100deg,
+    alpha(@on_surface, 0) 40%,
+    alpha(@on_surface, 0.20) 50%,
+    alpha(@on_surface, 0) 60%);
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  background-repeat: no-repeat;
+
+  /* Colour stays at 0.2s; only the sweep runs long. */
+  transition: all 0.2s ease,
+              background-position 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 #custom-nix {
@@ -102,26 +116,36 @@ window#waybar {
 }
 
 #workspaces {
-  background: alpha(@surface_container_low, 0.8);
+  background-color: alpha(@surface_container_low, 0.8);
   padding: 0 4px;
   border-top: 3px solid @tertiary;
   font-weight: bold;
 }
 
+/* The pill is a background-image whose width animates, so it wipes open from
+   the left instead of fading in. background-color is left to :hover. */
 #workspaces button {
   color: @on_surface_variant;
+  min-width: 25px;
   padding: 0 6px;
   margin: 4px 2px;
   border-radius: 8px;
+  background-color: transparent;
+  background-image: linear-gradient(alpha(@tertiary, 0.15), alpha(@tertiary, 0.15));
+  background-size: 0% 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
 }
 
 #workspaces button.active {
   color: @tertiary;
-  background: alpha(@tertiary, 0.15);
+  background-size: 100% 100%;
+  min-width: 40px;
 }
 
 #workspaces button:hover {
-  background: alpha(@on_surface, 0.1);
+  background-color: alpha(@on_surface, 0.1);
 }
 
 #pulseaudio {
@@ -186,23 +210,46 @@ window#waybar {
   color: @error;
 }
 
+/* Excludes cava (no surface) and workspaces (its buttons hover on their own). */
 #clock:hover,
-#pulseaudio:hover,
-#custom-light:hover,
-#custom-temperature:hover ,
-#custom-theme-toggle:hover,
-#backlight:hover,
+#battery:hover,
 #cpu:hover,
+#custom-gpu:hover,
 #memory:hover,
 #idle_inhibitor:hover,
+#temperature:hover,
+#backlight:hover,
+#network:hover,
+#pulseaudio:hover,
+#bluetooth:hover,
+#tray:hover,
+#custom-nix:hover,
 #custom-swaync:hover,
+#custom-light:hover,
+#custom-temperature:hover,
+#custom-theme-toggle:hover,
 #mpris:hover {
-  background: @surface_container_high;
+  background-color: @surface_container_high;
+  background-position: 0% 0;
 }
 
 #cava {
-  background: transparent;
+  background-color: transparent;
+  background-image: none;
   color: @primary;
   margin: 0 15px;
   border-top: none;
+}
+
+/* Element selectors outrank the `*` reset, so these need no !important. */
+tooltip {
+  background: @surface_container;
+  border: 1px solid @outline_variant;
+  border-radius: 12px;
+}
+
+tooltip label {
+  color: @on_surface;
+  padding: 5px 5px;
+  font-size: 12px;
 }

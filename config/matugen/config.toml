@@ -42,6 +42,11 @@ output_path = '~/.config/rofi/colors/colors-matugen.rasi'
 input_path = '~/.config/matugen/templates/colors.css'
 output_path = '~/.config/waybar/colors.css'
 
+# Clock module: calendar needs literal hex, not colors.css. Included by config.jsonc.
+[templates.waybar_clock]
+input_path = '~/.config/matugen/templates/waybar-clock.jsonc'
+output_path = '~/.config/waybar/clock.jsonc'
+
 
 [templates.swaync]
 input_path = '~/.config/matugen/templates/colors-swaync.css'
