@@ -20,6 +20,7 @@
 - **Wallpaper-driven theming** — `wallset` opens a rofi picker with previews; one click re-colors Hyprland borders, Waybar, Kitty, Rofi, swaync, btop, starship and GTK apps via [matugen](https://github.com/InioX/matugen) (Material You)
 - **Light / dark toggle** — a Waybar module regenerates the whole scheme in the other mode, same wallpaper
 - **Custom MPRIS popup** — click the Waybar media module for a popup with cover art and playback controls, written in Rust
+- **Workspace overview** — `Super+Tab` or a Waybar button drops a fullscreen overlay with every workspace as a card of live window thumbnails; hover and click, or arrow-keys and Enter, to jump
 - **Screenshot applet with scroll capture** — a rofi menu (`Super+P`) for desktop/window/area/timed shots, plus **scroll capture** (record while you scroll, frames get stitched into one tall PNG by a small Go tool) and **screen recording**
 - **Reproducible installs** — exported pacman/AUR package lists + deploy/sync scripts make reinstalling (or borrowing) the setup a few commands; `deploy.sh` compiles the Rust/Go helpers for you and skips the ones whose sources haven't changed
 
@@ -29,6 +30,7 @@
 |---|---|
 | WM | [Hyprland](https://hypr.land/) — configured in **Lua** (`hyprland.lua`) |
 | Bar | Waybar, with custom MPRIS popup, light/dark toggle & ext/workspaces |
+| Workspace overview | [hyprexpose](https://github.com/ThiagoAVicente/hyprexpose) — `Super+Tab` or a Waybar button |
 | Launcher / menus | Rofi (launcher, applets, wallpaper picker) |
 | Terminal | Kitty |
 | Editor | Neovim (LazyVim & Neovide) |
@@ -52,9 +54,9 @@ Docs/        → screenshots
 ```
 
 Everything matugen writes (`hypr/colors/`, `waybar/colors.css`, `kitty/colors/`, `rofi/colors/`,
-`~/.config/starship.toml`) is generated, not tracked — the templates in `config/matugen/templates/`
-are the source of truth. `deploy.sh` keeps those generated files in place when it redeploys a
-config directory.
+`~/.config/starship.toml`, `~/.config/hyprexpose/config.toml`) is generated, not tracked — the
+templates in `config/matugen/templates/` are the source of truth. `deploy.sh` keeps those generated
+files in place when it redeploys a config directory.
 
 ## Installation
 
@@ -105,7 +107,7 @@ wallset (rofi picker with previews)
   └─ wallset-backend <image>
        ├─ awww img …                  # animated wallpaper switch
        ├─ matugen image …             # generate colors from the image
-       │    └─ templates → hyprland, kitty, rofi, waybar, swaync, btop, starship, GTK 3/4
+       │    └─ templates → hyprland, kitty, rofi, waybar, swaync, btop, starship, GTK 3/4, hyprexpose
        ├─ restart waybar, reload swaync
        └─ remembers wallpaper in ~/.cache/last_wallpaper
 ```
@@ -141,5 +143,6 @@ launch. Its matcher is covered by `stitch_test.go` (`go test ./...` in the tool'
 - Parts of this setup adapted from [Noro18/linux-ricing-dotfiles](https://github.com/Noro18/linux-ricing-dotfiles)
 - Rofi launchers & applets based on [adi1090x/rofi](https://github.com/adi1090x/rofi)
 - [matugen](https://github.com/InioX/matugen) for Material You color generation
+- [hyprexpose](https://github.com/ThiagoAVicente/hyprexpose) for the workspace overview
 - [LazyVim](https://www.lazyvim.org/) as the Neovim base
 - [sddm-astronaut-theme](https://github.com/Keyitdev/sddm-astronaut-theme)

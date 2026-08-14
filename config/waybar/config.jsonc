@@ -18,7 +18,7 @@
     "modules-center": [
         // "custom/temperature",
         // "custom/light",
-        "ext/workspaces",
+        "group/workspaces-bar",
         // "backlight",
         "pulseaudio"
     ],
@@ -40,9 +40,28 @@
         "modules": [
             "cpu",
             "custom/gpu",
-            "memory",
-            "idle_inhibitor"
+            "memory"
         ]
+    },
+    // One pill: the group draws the surface, its modules are transparent.
+    "group/workspaces-bar": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/taskview",
+            "custom/wsdivider",
+            "ext/workspaces"
+        ]
+    },
+    // hyprexpose daemon toggles its overlay on SIGUSR1.
+    "custom/taskview": {
+        "format": "",
+        "tooltip": true,
+        "tooltip-format": "Workspace overview  (Super+Tab)",
+        "on-click": "pkill -SIGUSR1 hyprexpose"
+    },
+    "custom/wsdivider": {
+        "format": "│",
+        "tooltip": false
     },
     "custom/theme-toggle": {
         "exec": "~/.config/waybar/scripts/theme-toggle.sh status",
@@ -50,13 +69,6 @@
         "return-type": "json",
         "interval": "once",
         "tooltip": true
-    },
-    "idle_inhibitor": {
-        "format": "{icon}",
-        "format-icons": {
-            "activated": "",
-            "deactivated": ""
-        }
     },
     "cpu": {
         "interval": 10,

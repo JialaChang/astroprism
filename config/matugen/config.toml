@@ -48,6 +48,14 @@ input_path = '~/.config/matugen/templates/waybar-clock.jsonc'
 output_path = '~/.config/waybar/clock.jsonc'
 
 
+# Whole file generated, not just colors -- hyprexpose takes a single TOML with
+# no includes, and reads it once at startup, hence the restart hook.
+[templates.hyprexpose]
+input_path = '~/.config/matugen/templates/hyprexpose-colors.toml'
+output_path = '~/.config/hyprexpose/config.toml'
+post_hook = 'pkill -x hyprexpose; command -v hyprexpose >/dev/null && setsid -f hyprexpose; true'
+
+
 [templates.swaync]
 input_path = '~/.config/matugen/templates/colors-swaync.css'
 output_path = '~/.config/swaync/colors-swaync.css'

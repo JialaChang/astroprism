@@ -40,6 +40,10 @@ local menu = "rofi -show drun -theme ~/.config/rofi/launchers/type-1/style-7.ras
 local powermenu = "~/.config/rofi/applets/bin/powermenu.sh"
 local screenshot = "~/.config/rofi/applets/bin/screenshot.sh"
 
+local function rofiToggle(cmd)
+	return "bash -c 'pkill -x rofi || exec " .. cmd .. "'"
+end
+
 -------------------
 ---- AUTOSTART ----
 -------------------
@@ -56,6 +60,8 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd("fcitx5 -d")
 	hl.exec_cmd("awww-daemon")
 	hl.exec_cmd("bash -c 'sleep 1 && awww img $(cat ~/.cache/last_wallpaper)'")
+	-- Workspace overview daemon.
+	hl.exec_cmd("hyprexpose")
 end)
 
 -------------------------------
@@ -285,9 +291,11 @@ hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle only
 hl.bind(mainMod .. "+ space", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. "+ B", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("bash -c 'pkill waybar || waybar & disown'"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(powermenu))
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(rofiToggle(powermenu)))
+-- workspace overview (hyprexpose daemon toggles on SIGUSR1)
+hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("pkill -SIGUSR1 hyprexpose"))
 -- screenshot
-hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(screenshot))
+hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(rofiToggle(screenshot)))
 hl.bind("CTRL + SHIFT + F", hl.dsp.exec_cmd(screenshot .. " --opt3"))
 -- toggle opacity
 hl.bind(mainMod .. " + CTRL + P", hl.dsp.window.tag({ tag = "peek" }))
