@@ -4,6 +4,7 @@
 **/kitty/colors/
 **/rofi/colors/
 config/starship.toml
+config/waybar/clock.jsonc
 
 .vscode/
 __pycache__/
