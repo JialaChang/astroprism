@@ -29,7 +29,6 @@ window#waybar {
 #cpu,
 #custom-gpu,
 #memory,
-#idle_inhibitor,
 #temperature,
 #backlight,
 #network,
@@ -43,14 +42,22 @@ window#waybar {
 #custom-theme-toggle,
 #cava,
 #mpris,
-#workspaces {
-  background: @surface_container;
+#workspaces-bar {
+  /* background-color, not the shorthand: it would reset background-image. */
+  background-color: @surface_container;
   color: @on_surface;
   margin: 0 4px;
   padding: 4px 12px;
   border-radius: 0 0 12px 12px;
   border-top: 3px solid transparent;
-  transition: all 0.2s ease;
+
+  /* Stops must match the hover gradients below, or GTK can't interpolate. */
+  background-image: linear-gradient(to bottom,
+    alpha(@on_surface, 0),
+    alpha(@on_surface, 0) 40%,
+    alpha(@on_surface, 0) 75%);
+
+  transition: all 0.3s cubic-bezier(0.34, 1.25, 0.64, 1);
 }
 
 #custom-nix {
@@ -85,43 +92,77 @@ window#waybar {
   font-weight: bold;
 }
 
-#idle_inhibitor {
-  border-top: 3px solid @primary;
-}
-
-#group-sysstats {
+#sysstats {
   padding-right: 5px;
 }
 
-#group-sysstats.collapsed #custom-gpu,
-#group-sysstats.collapsed #memory,
-#group-sysstats.collapsed #idle_inhibitor {
+#sysstats.collapsed #custom-gpu,
+#sysstats.collapsed #memory {
   padding: 0;
   margin: 0;
   border-top: none;
 }
 
-#workspaces {
-  background: alpha(@surface_container_low, 0.8);
+#workspaces-bar {
+  background-color: alpha(@surface_container_low, 0.8);
   padding: 0 4px;
   border-top: 3px solid @tertiary;
   font-weight: bold;
 }
 
+/* Transparent inside the group's pill. Padding is left to the rules below --
+   set here it would outrank them, two ids beating one. */
+#workspaces-bar #custom-taskview,
+#workspaces-bar #custom-wsdivider,
+#workspaces-bar #workspaces {
+  background-color: transparent;
+  background-image: none;
+  margin: 0;
+  border-top: none;
+  border-radius: 0;
+}
+
+#workspaces-bar #custom-taskview {
+  color: @on_surface_variant;
+  padding: 0 10px;
+  font-size: 16px;
+  transition: color 0.2s ease;
+}
+
+#workspaces-bar #custom-taskview:hover {
+  color: @tertiary;
+}
+
+/* @outline_variant (#43474e) vanishes on the pill. */
+#workspaces-bar #custom-wsdivider {
+  color: @outline;
+  padding: 0 2px;
+}
+
+/* The pill is a background-image whose width animates, so it wipes open from
+   the left instead of fading in. background-color is left to :hover. */
 #workspaces button {
   color: @on_surface_variant;
+  min-width: 15px;
   padding: 0 6px;
   margin: 4px 2px;
   border-radius: 8px;
+  background-color: transparent;
+  background-image: linear-gradient(alpha(@tertiary, 0.15), alpha(@tertiary, 0.15));
+  background-size: 0% 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
 }
 
 #workspaces button.active {
   color: @tertiary;
-  background: alpha(@tertiary, 0.15);
+  background-size: 100% 100%;
+  min-width: 25px;
 }
 
 #workspaces button:hover {
-  background: alpha(@on_surface, 0.1);
+  background-color: alpha(@on_surface, 0.1);
 }
 
 #pulseaudio {
@@ -186,23 +227,66 @@ window#waybar {
   color: @error;
 }
 
-#clock:hover,
-#pulseaudio:hover,
-#custom-light:hover,
-#custom-temperature:hover ,
+/* Each module washes in its own top-border accent; the middle stop keeps the
+   falloff from banding. cava and workspaces-bar are excluded on purpose. */
+#custom-nix:hover,
 #custom-theme-toggle:hover,
-#backlight:hover,
+#pulseaudio:hover,
+#mpris:hover,
+#custom-swaync:hover {
+  background-image: linear-gradient(to bottom,
+    alpha(@primary, 0.20),
+    alpha(@primary, 0.10) 40%,
+    alpha(@primary, 0) 75%);
+}
+
+#clock:hover,
 #cpu:hover,
-#memory:hover,
-#idle_inhibitor:hover,
-#custom-swaync:hover,
-#mpris:hover {
-  background: @surface_container_high;
+#network:hover,
+#battery:hover,
+#bluetooth:hover,
+#backlight:hover,
+#custom-light:hover,
+#custom-temperature:hover,
+#temperature:hover {
+  background-image: linear-gradient(to bottom,
+    alpha(@secondary, 0.20),
+    alpha(@secondary, 0.10) 40%,
+    alpha(@secondary, 0) 75%);
+}
+
+#custom-gpu:hover,
+#memory:hover {
+  background-image: linear-gradient(to bottom,
+    alpha(@tertiary, 0.20),
+    alpha(@tertiary, 0.10) 40%,
+    alpha(@tertiary, 0) 75%);
+}
+
+#tray:hover {
+  background-image: linear-gradient(to bottom,
+    alpha(@on_surface_variant, 0.20),
+    alpha(@on_surface_variant, 0.10) 40%,
+    alpha(@on_surface_variant, 0) 75%);
 }
 
 #cava {
-  background: transparent;
+  background-color: transparent;
+  background-image: none;
   color: @primary;
   margin: 0 15px;
   border-top: none;
+}
+
+/* Element selectors outrank the `*` reset, so these need no !important. */
+tooltip {
+  background: @surface_container;
+  border: 1px solid @outline_variant;
+  border-radius: 12px;
+}
+
+tooltip label {
+  color: @on_surface;
+  padding: 5px 5px;
+  font-size: 12px;
 }

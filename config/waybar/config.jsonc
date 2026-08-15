@@ -1,4 +1,6 @@
 {
+    // matugen-generated; regenerated on every wallset run.
+    "include": ["~/.config/waybar/clock.jsonc"],
     "layer": "top",
     "font": "JetBrains Nerd Font 8",
     "margin": "8 8 0 8",
@@ -17,7 +19,7 @@
         // "custom/temperature",
         // "custom/light",
         "backlight",
-        "ext/workspaces",
+        "group/workspaces-bar",
         "pulseaudio"
     ],
     "modules-right": [
@@ -38,9 +40,28 @@
         "modules": [
             "cpu",
             "custom/gpu",
-            "memory",
-            "idle_inhibitor"
+            "memory"
         ]
+    },
+    // One pill: the group draws the surface, its modules are transparent.
+    "group/workspaces-bar": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/taskview",
+            "custom/wsdivider",
+            "ext/workspaces"
+        ]
+    },
+    // hyprexpose daemon toggles its overlay on SIGUSR1.
+    "custom/taskview": {
+        "format": "",
+        "tooltip": true,
+        "tooltip-format": "Workspace overview  (Super+Tab)",
+        "on-click": "pkill -SIGUSR1 hyprexpose"
+    },
+    "custom/wsdivider": {
+        "format": "│",
+        "tooltip": false
     },
     "custom/theme-toggle": {
         "exec": "~/.config/waybar/scripts/theme-toggle.sh status",
@@ -48,13 +69,6 @@
         "return-type": "json",
         "interval": "once",
         "tooltip": true
-    },
-    "idle_inhibitor": {
-        "format": "{icon}",
-        "format-icons": {
-            "activated": "",
-            "deactivated": ""
-        }
     },
     "cpu": {
         "interval": 10,
@@ -93,31 +107,6 @@
 
         "format-charging": "{capacity}% "
     },
-    "clock": {
-        "format": "{:%H:%M}  ",
-        "format-alt": "{:%A, %B %d, %Y} ",
-        "tooltip-format": "<tt><small>{calendar}</small></tt>",
-        "calendar": {
-            "mode": "year",
-            "mode-mon-col": 3,
-            "weeks-pos": "right",
-            "on-scroll": 1,
-            "format": {
-                "months": "<span color='#ffead3'><b>{}</b></span>",
-                "days": "<span color='#ecc6d9'><b>{}</b></span>",
-                "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
-                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
-                "today": "<span color='#ff6699'><b><u>{}</u></b></span>"
-            }
-        },
-        "actions": {
-            "on-click-right": "mode",
-            "on-scroll-up": "tz_up",
-            "on-scroll-down": "tz_down",
-            "on-scroll-up": "shift_up",
-            "on-scroll-down": "shift_down"
-        }
-    },
     // Uses the ext-workspace-v1 wayland protocol instead of Hyprland's IPC.
     // hyprland/workspaces sends the legacy `dispatch workspace N` string, which the
     // Lua config provider rejects as a syntax error, so its clicks do nothing.
@@ -125,6 +114,9 @@
     "ext/workspaces": {
         "format": "{icon}",
         "on-click": "activate",
+        // 68 = GDK_LEFT_PTR. Keeps the arrow instead of flipping to a pointer
+        // at the container edge. 0.15 takes only `true` or a Gdk::CursorType int.
+        "cursor": 68,
         "sort-by-id": true,
         "format-icons": {
             "1": "",

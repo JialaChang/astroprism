@@ -152,7 +152,7 @@ deploy_all() {
   deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors"
   deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors"
   deploy "$ROOT_DIR/config/nvim" "$HOME/.config/nvim"
-  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css"
+  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css" "clock.jsonc"
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen"
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors"
 
