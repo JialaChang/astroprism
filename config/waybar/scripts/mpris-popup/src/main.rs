@@ -1,10 +1,11 @@
 // Author: JialaChang
 
-// Floating GTK popup for waybar's mpris module (click-to-open, since waybar
-// has no hover-exec): shows cover art, title/artist, a seek bar, and
-// prev/play-pause/next controls, driven through playerctl. Refreshes are
-// triggered by D-Bus PropertiesChanged signals from playerctld rather than
-// polling; only the seek bar's per-second advance is a local timer.
+// Floating GTK popup for waybar's mpris module (click-to-open, since waybar has no hover-exec):
+// shows the player name, cover art, title/artist, a seek bar, and prev/play-pause/next
+// controls, driven through playerctl; clicking the player name focuses that app's own window.
+// Refreshes are triggered by D-Bus signals from playerctld — PropertiesChanged, plus Seeked
+// for the position MPRIS never notifies on — rather than polling; only the seek bar's
+// per-second advance is a local timer. Remote cover art is fetched off the main thread.
 
 use std::cell::{Cell, RefCell};
 use std::io::Read;
@@ -16,10 +17,11 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 
 const PIDFILE: &str = "/tmp/waybar-mpris-popup.pid";
+const HIDE_DELAY_MS: u64 = 3000;
+
 const ART_SIZE: i32 = 84;
 /// Corner rounding of the cover art, in pixels.
 const ART_RADIUS: f64 = 12.0;
-const HIDE_DELAY_MS: u64 = 3000;
 const POPUP_WIDTH: i32 = 380;
 const POPUP_HEIGHT: i32 = 120;
 /// Gap between the top of the screen and the popup (i.e. distance below the bar).
@@ -161,7 +163,7 @@ fn player_pid(player_name: &str) -> Option<u32> {
     let instance_prefix = format!("{wanted}.");
     let bus_name = names
         .into_iter()
-        .find(|n| *n == wanted || n.starts_with(&instance_prefix))?;
+        .find(|n: &String| *n == wanted || n.starts_with(&instance_prefix))?;
 
     call("GetConnectionUnixProcessID", Some(&(bus_name,).to_variant()))?
         .child_value(0)
@@ -327,13 +329,10 @@ fn set_cursor(window: &gtk::Window, name: Option<&str>) {
     gdk_window.set_cursor(cursor.as_ref());
 }
 
-/// Whether a leave event means the pointer really left the popup. GTK also
-/// sends leave events to the window when the pointer merely moves from the
-/// window onto one of its own children — a button, the seek bar — and those
-/// arrive with detail Inferior. Treating them as "left the popup" is what made
-/// the popup close while the pointer was resting on a control. Everything else
-/// counts as an exit: erring towards closing is safer than a popup that stays
-/// up forever, and any enter event cancels the timer again.
+/// Whether a leave event means the pointer really left the popup. Moving onto
+/// one of the window's own children — a button, the seek bar — fires a leave
+/// event too, tagged Inferior; treating those as exits closed the popup under
+/// the pointer. Anything else counts as an exit: closing early is recoverable.
 fn is_pointer_exit(ev: &gdk::EventCrossing) -> bool {
     ev.detail() != gdk::NotifyType::Inferior
 }
@@ -349,7 +348,9 @@ fn decode_art(data: &[u8]) -> Option<Pixbuf> {
 /// Also records the player so clicking the label can find its window.
 fn set_status_label(widgets: &Widgets, shared: &Shared, player_name: &str) {
     shared.player_name.replace(player_name.to_string());
-    // playerctl reports firefox as e.g. "firefox.instance_1_96"
+    // {{playerName}} reports the base name ("firefox"), but playerctl's own
+    // player list carries an instance suffix ("firefox.instance_1_88"); drop it
+    // in case a future playerctl hands one through here too.
     let short_name = player_name.split('.').next().unwrap_or(player_name);
     let label = if short_name.is_empty() {
         "NO PLAYER".to_string()
@@ -563,7 +564,7 @@ fn build_window() -> gtk::Window {
     // Ellipsizing makes the label's minimum width one ellipsis wide, which the
     // button around it would then happily shrink to; keep a floor under it.
     status_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    status_label.set_width_chars(14);
+    status_label.set_width_chars(15);
 
     // A button rather than a bare label, so hover states and clicks come for
     // free; the CSS strips the button chrome so it still reads as a label.

@@ -17,7 +17,7 @@
         // "custom/temperature",
         // "custom/light",
         "backlight",
-        "hyprland/workspaces",
+        "ext/workspaces",
         "pulseaudio"
     ],
     "modules-right": [
@@ -125,6 +125,7 @@
     "ext/workspaces": {
         "format": "{icon}",
         "on-click": "activate",
+        "sort-by-id": true,
         "format-icons": {
             "1": "",
             "2": "󰈹",
