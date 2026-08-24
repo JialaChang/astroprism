@@ -288,5 +288,5 @@ tooltip {
 tooltip label {
   color: @on_surface;
   padding: 5px 5px;
-  font-size: 12px;
+  font-size: 10px;
 }
