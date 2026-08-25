@@ -54,8 +54,5 @@ vim.opt.swapfile = false
 vim.opt.backup = false
 vim.opt.undofile = true
 
--- Neovide
-if vim.g.neovide then
-  vim.o.guifont = "CodeNewRoman Nerd Font:h12"
-  vim.g.neovide_cursor_vfx_mode = "railgun"
-end
+-- Import
+require("config.neovide")
