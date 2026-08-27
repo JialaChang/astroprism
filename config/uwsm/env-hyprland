@@ -1,0 +1,66 @@
+# Sourced by uwsm's environment preloader (/bin/sh) before the compositor
+# starts. That is the only moment AQ_DRM_DEVICES still has any effect --
+# aquamarine reads it when it opens the DRM backend, so changing it later,
+# or from hyprland.lua, does nothing.
+#
+# Mode lives in ~/.config/uwsm/gpu-mode, written by the `gpu-mode` command:
+#   igpu    integrated only, so the dGPU can reach runtime D3 (~4.4W idle)
+#   hybrid  integrated first but dGPU kept open, for monitors wired to it
+#
+# Nothing is exported unless an integrated + NVIDIA pair is positively
+# identified, so on any other machine Hyprland keeps its default behaviour.
+
+_gpu_mode=igpu
+_gpu_mode_file="${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/gpu-mode"
+[ -r "$_gpu_mode_file" ] && read -r _gpu_mode < "$_gpu_mode_file"
+
+_igpu=
+_dgpu=
+for _c in /sys/class/drm/card[0-9]*; do
+	# card2-eDP-1 and friends are connectors, not cards
+	case ${_c##*/} in *-*) continue ;; esac
+	[ -r "$_c/device/vendor" ] || continue
+	read -r _v < "$_c/device/vendor"
+	if [ "$_v" = 0x10de ]; then
+		[ -n "$_dgpu" ] || _dgpu=/dev/dri/${_c##*/}
+	else
+		[ -n "$_igpu" ] || _igpu=/dev/dri/${_c##*/}
+	fi
+done
+
+if [ -n "$AQ_DRM_DEVICES_OVERRIDE" ]; then
+	export AQ_DRM_DEVICES="$AQ_DRM_DEVICES_OVERRIDE"
+elif [ -n "$_igpu" ] && [ -n "$_dgpu" ]; then
+	case $_gpu_mode in
+	hybrid)
+		export AQ_DRM_DEVICES="$_igpu:$_dgpu"
+		;;
+	*)
+		export AQ_DRM_DEVICES="$_igpu"
+
+		# Picking the render device is not enough. libglvnd still loads
+		# libEGL_nvidia into every GL client, the compositor included, and
+		# that alone opens /dev/nvidia0 and pins the dGPU out of runtime D3
+		# with nothing ever rendering on it. The NVIDIA Vulkan ICD does the
+		# same when Chromium enumerates GPUs at startup. Filter both by
+		# exclusion rather than naming mesa/intel, so this holds on other
+		# hardware. prime-run puts all of it back for offloaded apps.
+		_egl=
+		for _f in /usr/share/glvnd/egl_vendor.d/*.json; do
+			case ${_f##*/} in *nvidia*) continue ;; esac
+			_egl="${_egl:+$_egl:}$_f"
+		done
+		[ -n "$_egl" ] && export __EGL_VENDOR_LIBRARY_FILENAMES="$_egl"
+		export __GLX_VENDOR_LIBRARY_NAME=mesa
+
+		_vk=
+		for _f in /usr/share/vulkan/icd.d/*.json; do
+			case ${_f##*/} in *nvidia* | *nouveau*) continue ;; esac
+			_vk="${_vk:+$_vk:}$_f"
+		done
+		[ -n "$_vk" ] && export VK_DRIVER_FILES="$_vk"
+		;;
+	esac
+fi
+
+unset _gpu_mode _gpu_mode_file _igpu _dgpu _c _v _egl _vk _f

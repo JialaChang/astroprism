@@ -6,6 +6,9 @@
 config/starship.toml
 config/waybar/clock.jsonc
 
+# per-machine state, written by `gpu-mode`
+config/uwsm/gpu-mode
+
 .vscode/
 __pycache__/
 target/

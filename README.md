@@ -45,12 +45,12 @@
 ## Repo layout
 
 ```
-config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, wallpapers)
-local/bin/   → ~/.local/bin/…     (wallset, wallset-backend)
+config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, uwsm, wallpapers)
+local/bin/   → ~/.local/bin/…     (wallset, wallset-backend, gpu-mode, prime-run)
 bashrc/zshrc → ~/.bashrc, ~/.zshrc
 Packages/    → exported package lists (pacman / AUR / failed log)
 Scripts/     → deploy.sh, sync.sh, pkg.sh
-Docs/        → screenshots
+Docs/        → screenshots + manual-setup.md (the /etc bits deploy.sh can't write)
 ```
 
 Everything matugen writes (`hypr/colors/`, `waybar/colors.css`, `kitty/colors/`, `rofi/colors/`,

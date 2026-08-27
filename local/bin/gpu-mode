@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# Switch which GPU Hyprland renders on. The mode is only read at session
+# startup by ~/.config/uwsm/env-hyprland, so a change needs a re-login.
+
+MODE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/gpu-mode"
+
+current() {
+  local mode=igpu
+  [ -r "$MODE_FILE" ] && read -r mode < "$MODE_FILE"
+  echo "$mode"
+}
+
+status() {
+  local mode dgpu
+  mode="$(current)"
+
+  echo "Configured  : $mode"
+  echo "This session: AQ_DRM_DEVICES=${AQ_DRM_DEVICES:-<unset>}"
+
+  dgpu=$(grep -l 0x10de /sys/class/drm/card[0-9]*/device/vendor 2>/dev/null | head -1)
+  if [ -n "$dgpu" ]; then
+    local state
+    dgpu="$(dirname "$dgpu")"
+    state="$(cat "$dgpu/power/runtime_status" 2>/dev/null || echo unknown)"
+    echo "dGPU        : $state"
+
+    # nvidia-smi wakes the GPU to answer, so asking while it sleeps both
+    # destroys what we came to measure and reports a garbage wattage read
+    # during the power-up transition.
+    if [ "$state" = suspended ]; then
+      echo "dGPU draw   : not queried, that would wake it"
+    elif command -v nvidia-smi > /dev/null; then
+      echo "dGPU draw   : $(nvidia-smi --query-gpu=power.draw --format=csv,noheader 2>/dev/null)"
+    fi
+  fi
+}
+
+case "${1-}" in
+igpu | hybrid)
+  mkdir -p "$(dirname "$MODE_FILE")"
+  echo "$1" > "$MODE_FILE"
+  echo "==> GPU mode set to $1. Log out and back in to apply."
+  ;;
+toggle)
+  if [ "$(current)" = igpu ]; then exec "$0" hybrid; else exec "$0" igpu; fi
+  ;;
+"" | status)
+  status
+  ;;
+*)
+  echo "Usage: gpu-mode [igpu|hybrid|toggle|status]"
+  echo "    igpu   - integrated only, lets the dGPU power down"
+  echo "    hybrid - also open the dGPU, needed for monitors wired to it"
+  echo "    toggle - flip between the two"
+  echo "    status - show configured mode and live dGPU state (default)"
+  ;;
+esac
