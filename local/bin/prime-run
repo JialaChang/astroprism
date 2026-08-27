@@ -4,4 +4,13 @@ export __NV_PRIME_RENDER_OFFLOAD=1
 export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export __VK_LAYER_NV_optimus=NVIDIA_only
+
+# The session hides the NVIDIA EGL vendor and Vulkan ICD so the dGPU can stay
+# in runtime D3 (see ~/.config/uwsm/env-hyprland). Hand them back here, or the
+# offload flags above have nothing to offload to.
+for f in /usr/share/glvnd/egl_vendor.d/*nvidia*.json; do
+	[ -e "$f" ] && export __EGL_VENDOR_LIBRARY_FILENAMES="$f"
+done
+unset f VK_DRIVER_FILES
+
 exec "$@"

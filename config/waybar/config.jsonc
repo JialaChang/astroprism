@@ -85,7 +85,7 @@
         "exec": "~/.config/waybar/scripts/gpu.sh",
         "return-type": "json",
         "interval": 10,
-        "format": "{}% 󰾲",
+        "format": "{}",
         "on-click": "kitty -e nvtop"
     },
     "custom/nix": {
