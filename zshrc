@@ -33,7 +33,6 @@ alias ll='eza -la --icons=always --group-directories-first --git'
 alias lt='eza --tree --level=2 --icons=always --group-directories-first'
 alias la='eza -a --icons=always --group-directories-first'
 
-alias cat='bat'
 alias ff='clear && fastfetch'
 alias lgit='lazygit'
 

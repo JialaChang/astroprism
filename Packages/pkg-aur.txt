@@ -3,9 +3,10 @@ clipse
 hyprexpose-git
 libcava
 matugen-bin
+mihomo-party-bin
 oh-my-posh
 sddm-astronaut-theme
 spotify
 visual-studio-code-bin
 yay
-# Exported on 2026-08-15_15:33
+# Exported on 2026-09-05_23:38

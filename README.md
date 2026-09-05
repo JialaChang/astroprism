@@ -61,7 +61,7 @@ files in place when it redeploys a config directory.
 ## Installation
 
 > [!WARNING]
-> These are personal dotfiles, not a distro. `deploy.sh` **overwrites** existing configs (they're backed up as `*.backup` first), and the package lists include desktop apps like Discord, Spotify and VS Code. Read the scripts and trim `Packages/*.txt` before running anything.
+> These are personal dotfiles, not a distro. `deploy.sh deploy` **overwrites** existing configs without backing them up — run `deploy.sh backup` first if you want a copy — and the package lists include desktop apps like Discord, Spotify and VS Code. Read the scripts and trim `Packages/*.txt` before running anything.
 
 ```sh
 # 0. install base system and yay first
@@ -87,7 +87,7 @@ wallset
 
 | Script | What it does |
 |---|---|
-| `deploy.sh backup` | Backs up every target as `*.backup` before overwriting |
+| `deploy.sh backup` | Backs up every target as `*.backup`; run manually before `deploy` if you want a safety copy |
 | `deploy.sh build` | Compiles `mpris-popup` (cargo) and `scrollstitch` (go); each target is stamped with a hash of its sources + build command, so an unchanged tree skips the compiler |
 | `deploy.sh deploy` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, then `hyprctl reload` |
 | `sync.sh` | System → repo: pulls current configs back in and re-exports package lists (run before committing) |
