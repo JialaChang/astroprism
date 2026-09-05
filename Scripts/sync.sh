@@ -7,8 +7,14 @@ sync_dir() {
   local src=$1
   local dest=$2
   if [ -d "$src" ]; then
-    rm -rf "$dest"
-    cp -r "$src" "$dest"
+    mkdir -p "$dest"
+    rsync -a --delete \
+      --exclude 'target' \
+      --exclude 'node_modules' \
+      --exclude '.git' \
+      --exclude '__pycache__' \
+      --exclude '*.pyc' \
+      "$src/" "$dest/"
     echo " -> synced $src"
   else
     echo " -> $src not found, skipping..."

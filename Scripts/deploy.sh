@@ -179,8 +179,6 @@ build)
 deploy)
   build_all || exit 1
   echo "==> Build all the programs !"
-  backup_all
-  echo "==> Backup all the files !"
   deploy_all
   hyprctl reload > /dev/null
   echo "==> Deploy all the files !"
