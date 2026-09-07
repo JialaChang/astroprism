@@ -118,7 +118,7 @@
         "max-length": 20,
         "min-length": 20,
         "tooltip": false,
-        "on-click": "~/.config/waybar/scripts/mpris-popup/target/release/mpris-popup",
+        "on-click": "~/.config/waybar/scripts/mpris-popup/mpris-popup",
         "on-click-right": "playerctl play-pause"
     },
     "pulseaudio": {

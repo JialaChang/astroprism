@@ -31,36 +31,26 @@ deploy() {
   local dest=$2
   shift 2
   local keep=("$@")
-  local stash rel
+  local rel keep_args=()
 
   if [ -d "$src" ]; then
     echo "    -> Deploying dir $src to $dest..."
 
-    # stash matugen-generated files so rm -rf does not eat them
-    stash=$(mktemp -d)
     for rel in "${keep[@]}"; do
-      if [ -e "$dest/$rel" ]; then
-        echo "    -> Keeping generated $rel..."
-        mkdir -p "$stash/$(dirname "$rel")"
-        cp -r "$dest/$rel" "$stash/$rel"
-      fi
+      keep_args+=(--exclude "$rel")
     done
 
-    rm -rf "$dest"
-    cp -r "$src" "$dest"
-
-    for rel in "${keep[@]}"; do
-      if [ -e "$stash/$rel" ]; then
-        rm -rf "${dest:?}/$rel"
-        mkdir -p "$dest/$(dirname "$rel")"
-        cp -r "$stash/$rel" "$dest/$rel"
-      fi
-    done
-    rm -rf "$stash"
+    mkdir -p "$dest" || return 1
+    rsync -a --delete \
+      --exclude 'target' \
+      --exclude '.git' \
+      --exclude 'node_modules' \
+      "${keep_args[@]}" \
+      "$src/" "$dest/" || return 1
   elif [ -f "$src" ]; then
     echo "    -> Deploying file $src to $dest..."
-    mkdir -p "$(dirname "$dest")"
-    cp "$src" "$dest"
+    mkdir -p "$(dirname "$dest")" || return 1
+    cp "$src" "$dest" || return 1
   else
     echo "    -> $src not found, skipping..."
   fi
@@ -130,8 +120,8 @@ build_all() {
 
   build mpris-popup \
     "$ROOT_DIR/config/waybar/scripts/mpris-popup" \
-    "$ROOT_DIR/config/waybar/scripts/mpris-popup/target/release/mpris-popup" \
-    cargo build --release || failed=1
+    "$ROOT_DIR/config/waybar/scripts/mpris-popup/mpris-popup" \
+    bash -c 'cargo build --release && cp target/release/mpris-popup mpris-popup' || failed=1
 
   return $failed
 }
@@ -205,21 +195,25 @@ deploy_host() {
 
 # deploy files {src} {dest} [generated paths to keep, relative to dest...]
 deploy_all() {
-  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors"
-  deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors"
-  deploy "$ROOT_DIR/config/nvim" "$HOME/.config/nvim"
-  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css" "clock.jsonc"
-  deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen"
-  deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors"
-  deploy "$ROOT_DIR/config/uwsm" "$HOME/.config/uwsm" "gpu-mode"
+  local failed=0
 
-  deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset"
-  deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend"
-  deploy "$ROOT_DIR/local/bin/prime-run" "$HOME/.local/bin/prime-run"
-  deploy "$ROOT_DIR/local/bin/gpu-mode" "$HOME/.local/bin/gpu-mode"
+  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors" || failed=1
+  deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors" || failed=1
+  deploy "$ROOT_DIR/config/nvim" "$HOME/.config/nvim" || failed=1
+  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css" "clock.jsonc" || failed=1
+  deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen" || failed=1
+  deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors" || failed=1
+  deploy "$ROOT_DIR/config/uwsm" "$HOME/.config/uwsm" "gpu-mode" || failed=1
 
-  deploy "$ROOT_DIR/bashrc" "$HOME/.bashrc"
-  deploy "$ROOT_DIR/zshrc" "$HOME/.zshrc"
+  deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset" || failed=1
+  deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend" || failed=1
+  deploy "$ROOT_DIR/local/bin/prime-run" "$HOME/.local/bin/prime-run" || failed=1
+  deploy "$ROOT_DIR/local/bin/gpu-mode" "$HOME/.local/bin/gpu-mode" || failed=1
+
+  deploy "$ROOT_DIR/bashrc" "$HOME/.bashrc" || failed=1
+  deploy "$ROOT_DIR/zshrc" "$HOME/.zshrc" || failed=1
+
+  return $failed
 }
 
 case "$1" in
@@ -235,7 +229,7 @@ deploy)
   resolve_host_profile "$2" || exit 1
   build_all || exit 1
   echo "==> Build all the programs !"
-  deploy_all
+  deploy_all || exit 1
   deploy_host || exit 1
   hyprctl reload > /dev/null
   echo "==> Deploy all the files !"
