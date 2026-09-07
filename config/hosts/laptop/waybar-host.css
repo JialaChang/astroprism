@@ -1,0 +1,18 @@
+/* Laptop-specific waybar sizing.
+   Deployed to ~/.config/waybar/host.css by deploy.sh. */
+
+* {
+  font-size: 12px;
+}
+
+#workspaces button {
+  min-width: 15px;
+}
+
+#workspaces button.active {
+  min-width: 25px;
+}
+
+tooltip label {
+  font-size: 10px;
+}

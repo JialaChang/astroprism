@@ -8,26 +8,38 @@ aur_fail=0
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-PACMAN_TXT="$ROOT_DIR/Packages/pkg-pacman.txt"
-AUR_TXT="$ROOT_DIR/Packages/pkg-aur.txt"
+source "$SCRIPT_DIR/host.sh"
+
+# Package lists are per-machine
+PROFILE=$(host_profile)
+if [ -z "$PROFILE" ]; then
+  echo "==> No host profile set. Run: ./deploy.sh deploy <profile>"
+  echo "    available: $(host_profiles)"
+  exit 1
+fi
+
+PKG_DIR="$ROOT_DIR/Packages/$PROFILE"
+PACMAN_TXT="$PKG_DIR/pkg-pacman.txt"
+AUR_TXT="$PKG_DIR/pkg-aur.txt"
 FAILED_TXT="$ROOT_DIR/Packages/pkg-failed.txt"
 
 export_packages() {
-  echo "==> Exporting package list..."
-  # exclude debug pkg
+  echo "==> Exporting package list for '$PROFILE'..."
+  mkdir -p "$PKG_DIR"
+  # exclude debug packages
   comm -23 <(pacman -Qeq | sort) <(pacman -Qmq | sort) | grep -v '\-debug$' >"$PACMAN_TXT"
   pacman -Qmq | grep -v '\-debug$' >"$AUR_TXT"
   echo "# Exported on $(date +%Y-%m-%d_%H:%M)" >>"$PACMAN_TXT"
   echo "# Exported on $(date +%Y-%m-%d_%H:%M)" >>"$AUR_TXT"
-  echo "    -> exported to 'Packages/pkg-pacman.txt'"
-  echo "    -> exported to 'Packages/pkg-aur.txt'"
+  echo "    -> exported to 'Packages/$PROFILE/pkg-pacman.txt'"
+  echo "    -> exported to 'Packages/$PROFILE/pkg-aur.txt'"
   echo "==> Export done!"
 }
 
 install_packages() {
   # pre-flight checks
   if [ ! -f "$PACMAN_TXT" ] || [ ! -f "$AUR_TXT" ]; then
-    echo "==> Error: package list not found, run './pkg.sh export' first!"
+    echo "==> Error: no package list for '$PROFILE', run './pkg.sh export' first!"
     exit 1
   fi
 

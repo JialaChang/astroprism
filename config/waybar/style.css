@@ -1,4 +1,8 @@
 @import "colors.css";
+/* Per-machine font sizes and workspace pill widths; deploy.sh copies it from
+   config/hosts/<profile>/waybar-host.css. GTK CSS has no size variables and
+   @import must come first, so host.css owns those values outright. */
+@import "host.css";
 
 /*
  * Modern-Tabs Style for Waybar
@@ -8,7 +12,6 @@
   border: none;
   border-radius: 0;
   font-family: "JetBrains Nerd Font", "Iosevka Nerd Font";
-  font-size: 14px;
   min-height: 0;
 }
 
@@ -143,7 +146,6 @@ window#waybar {
    the left instead of fading in. background-color is left to :hover. */
 #workspaces button {
   color: @on_surface_variant;
-  min-width: 25px;
   padding: 0 6px;
   margin: 4px 2px;
   border-radius: 8px;
@@ -158,7 +160,6 @@ window#waybar {
 #workspaces button.active {
   color: @tertiary;
   background-size: 100% 100%;
-  min-width: 40px;
 }
 
 #workspaces button:hover {
@@ -288,5 +289,4 @@ tooltip {
 tooltip label {
   color: @on_surface;
   padding: 5px 5px;
-  font-size: 12px;
 }

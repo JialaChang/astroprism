@@ -1,0 +1,28 @@
+{
+    // Desktop-specific waybar layout
+    // Deployed to ~/.config/waybar/host.jsonc by deploy.sh
+    //
+    // Available: custom/nix clock mpris network bluetooth hyprland/window
+    //            group/workspaces-bar backlight pulseaudio cava
+    //            group/sysstats battery custom/gpu custom/temperature
+    //            custom/light custom/theme-toggle custom/swaync
+    //            custom/taskview tray
+    "font": "JetBrains Nerd Font 10",
+    "margin": "8 12 0 12",
+    "modules-left": [
+        "custom/nix",
+        "clock",
+        "network",
+        "mpris"
+    ],
+    "modules-center": [
+        "group/workspaces-bar",
+        "pulseaudio"
+    ],
+    "modules-right": [
+        "group/sysstats",
+        "custom/theme-toggle",
+        "custom/swaync",
+        "tray"
+    ]
+}

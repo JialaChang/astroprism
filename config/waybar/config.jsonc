@@ -1,35 +1,12 @@
 {
-    // matugen-generated; regenerated on every wallset run.
-    "include": ["~/.config/waybar/clock.jsonc"],
+    // clock.jsonc is matugen-generated; regenerated on every wallset run
+    // host.jsonc carries the per-machine font, margin and module lists;
+    // deploy.sh copies it from config/hosts/<profile>/waybar-host.jsonc
+    "include": ["~/.config/waybar/clock.jsonc", "~/.config/waybar/host.jsonc"],
     "layer": "top",
-    "font": "JetBrains Nerd Font 10",
-    "margin": "8 12 0 12",
     "reload_style_on_change": true,
     "on-sigusr1": "hide",
     "on-sigusr2": "show",
-    "modules-left": [
-        "custom/nix",
-        "clock",
-        "network",
-        "mpris"
-        // "bluetooth"
-        // "hyprland/window"
-    ],
-    "modules-center": [
-        // "custom/temperature",
-        // "custom/light",
-        "group/workspaces-bar",
-        // "backlight",
-        "pulseaudio"
-    ],
-    "modules-right": [
-        // "cava",
-        "group/sysstats",
-        "custom/theme-toggle",
-        // "battery",
-        "custom/swaync",
-        "tray"
-    ],
     "group/sysstats": {
         "orientation": "horizontal",
         "drawer": {
@@ -149,7 +126,10 @@
         "format-bluetooth": "{volume}% {icon} ",
         "format-muted": "",
         "format-icons": {
-            "alsa_output.pci-0000_00_1f.3.analog-stereo": "",
+            "alsa_output.pci-0000_00_1f.3.analog-stereo": [
+                "",
+                ""
+            ],
             "alsa_output.pci-0000_00_1f.3.analog-stereo-muted": "",
             "headphone": "",
             "hands-free": "",

@@ -9,6 +9,12 @@ config/waybar/clock.jsonc
 # per-machine state, written by `gpu-mode`
 config/uwsm/gpu-mode
 
+# deploy_host output -- the tracked copies live in config/hosts/<profile>/
+config/hypr/host.lua
+config/waybar/host.jsonc
+config/waybar/host.css
+config/waybar/mpris-popup-margin
+
 .vscode/
 __pycache__/
 target/

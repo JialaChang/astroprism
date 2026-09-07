@@ -17,20 +17,19 @@
 
 ##  Features
 
-- **Wallpaper-driven theming** — `wallset` opens a rofi picker with previews; one click re-colors Hyprland borders, Waybar, Kitty, Rofi, swaync, btop, starship and GTK apps via [matugen](https://github.com/InioX/matugen) (Material You)
-- **Light / dark toggle** — a Waybar module regenerates the whole scheme in the other mode, same wallpaper
-- **Custom MPRIS popup** — click the Waybar media module for a popup with cover art and playback controls, written in Rust
-- **Workspace overview** — `Super+Tab` or a Waybar button drops a fullscreen overlay with every workspace as a card of live window thumbnails; hover and click, or arrow-keys and Enter, to jump
-- **Screenshot applet with scroll capture** — a rofi menu (`Super+P`) for desktop/window/area/timed shots, plus **scroll capture** (record while you scroll, frames get stitched into one tall PNG by a small Go tool) and **screen recording**
-- **Reproducible installs** — exported pacman/AUR package lists + deploy/sync scripts make reinstalling (or borrowing) the setup a few commands; `deploy.sh` compiles the Rust/Go helpers for you and skips the ones whose sources haven't changed
+- **Wallpaper-driven theming** — pick a wallpaper, the whole desktop recolors itself via [matugen](https://github.com/InioX/matugen) (Material You), light or dark
+- **Custom MPRIS popup** — cover art and playback controls, one click from the bar
+- **Workspace overview** — a fullscreen grid of live window thumbnails, `Super+Tab` to jump
+- **Screenshot applet** — desktop/window/area/timed shots, screen recording, and scroll capture that stitches a scrolling page into one tall PNG
+- **Reproducible installs** — exported package lists and deploy/sync scripts get the setup back in a few commands, on either machine
 
 ## What's inside
 
 | Part | Choice |
 |---|---|
 | WM | [Hyprland](https://hypr.land/) — configured in **Lua** (`hyprland.lua`) |
-| Bar | Waybar, with custom MPRIS popup, light/dark toggle & ext/workspaces |
-| Workspace overview | [hyprexpose](https://github.com/ThiagoAVicente/hyprexpose) — `Super+Tab` or a Waybar button |
+| Bar | Waybar |
+| Workspace overview | [hyprexpose](https://github.com/ThiagoAVicente/hyprexpose) |
 | Launcher / menus | Rofi (launcher, applets, wallpaper picker) |
 | Terminal | Kitty |
 | Editor | Neovim (LazyVim & Neovide) |
@@ -38,7 +37,7 @@
 | Notifications | swaync |
 | Lockscreen | hyprlock |
 | Wallpaper | awww + `wallset` script |
-| Theming | [matugen](https://github.com/InioX/matugen) — Material You colors from wallpaper |
+| Theming | [matugen](https://github.com/InioX/matugen) |
 | Display manager | SDDM (`sddm-astronaut-theme`) |
 | Input method | fcitx5 + chewing |
 
@@ -46,22 +45,43 @@
 
 ```
 config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, uwsm, wallpapers)
+config/hosts/→ per-machine values (see Host profiles below)
 local/bin/   → ~/.local/bin/…     (wallset, wallset-backend, gpu-mode, prime-run)
 bashrc/zshrc → ~/.bashrc, ~/.zshrc
-Packages/    → exported package lists (pacman / AUR / failed log)
+Packages/    → exported package lists, one dir per host profile
 Scripts/     → deploy.sh, sync.sh, pkg.sh
 Docs/        → screenshots + manual-setup.md (the /etc bits deploy.sh can't write)
 ```
 
-Everything matugen writes (`hypr/colors/`, `waybar/colors.css`, `kitty/colors/`, `rofi/colors/`,
-`~/.config/starship.toml`, `~/.config/hyprexpose/config.toml`) is generated, not tracked — the
-templates in `config/matugen/templates/` are the source of truth. `deploy.sh` keeps those generated
-files in place when it redeploys a config directory.
+Everything matugen writes is generated, not tracked — the templates in `config/matugen/templates/`
+are the source of truth, and `deploy.sh` keeps the generated files in place when it redeploys a
+config directory.
+
+## Host profiles
+
+The desktop and the laptop want different font sizes, gaps and waybar modules. Rather than keeping a
+branch per machine, those values live in `config/hosts/<profile>/` and `deploy.sh` copies them into
+place as `host.*` files that the main configs pull in.
+
+Both machines share a hostname, so the profile is stored in `~/.config/astroprism-host` instead of
+being detected. Pass it once to set or change it:
+
+```sh
+./Scripts/deploy.sh deploy laptop   # writes ~/.config/astroprism-host, then deploys
+./Scripts/deploy.sh deploy          # later runs reuse it
+```
+
+The profile also picks the package lists (`Packages/<profile>/`), so each machine's `pkg.sh export`
+records its own hardware instead of overwriting the other's.
+
+The deployed `host.*` files are `sync.sh`-excluded and gitignored — edit
+`config/hosts/<profile>/` instead. To add a machine, copy an existing profile directory and deploy
+with its name.
 
 ## Installation
 
 > [!WARNING]
-> These are personal dotfiles, not a distro. `deploy.sh deploy` **overwrites** existing configs without backing them up — run `deploy.sh backup` first if you want a copy — and the package lists include desktop apps like Discord, Spotify and VS Code. Read the scripts and trim `Packages/*.txt` before running anything.
+> These are personal dotfiles, not a distro. `deploy.sh deploy` **overwrites** existing configs without backing them up — run `deploy.sh backup` first if you want a copy — and the package lists include desktop apps like Discord, Spotify and VS Code. Read the scripts and trim `Packages/<profile>/` before running anything.
 
 ```sh
 # 0. install base system and yay first
@@ -72,12 +92,12 @@ git clone https://aur.archlinux.org/yay.git /tmp/yay && (cd /tmp/yay && makepkg 
 git clone git@github.com:JialaChang/astroprism.git
 cd astroprism
 
-# 2. install everything from the exported lists
-./Scripts/pkg.sh install        # failures are logged to Packages/pkg-failed.txt
+# 2. deploy configs (builds the Rust/Go helpers first, needs cargo + go)
+./Scripts/deploy.sh backup            # optional: saves existing configs as *.backup
+./Scripts/deploy.sh deploy desktop    # profile: desktop | laptop
 
-# 3. deploy configs (builds the Rust/Go helpers first, needs cargo + go)
-./Scripts/deploy.sh backup      # saves existing configs as *.backup
-./Scripts/deploy.sh deploy      # build + copy configs into place + hyprctl reload
+# 3. install everything from this profile's lists
+./Scripts/pkg.sh install        # failures are logged to Packages/pkg-failed.txt
 
 # 4. set a wallpaper — this also generates the whole color scheme
 wallset
@@ -89,13 +109,15 @@ wallset
 |---|---|
 | `deploy.sh backup` | Backs up every target as `*.backup`; run manually before `deploy` if you want a safety copy |
 | `deploy.sh build` | Compiles `mpris-popup` (cargo) and `scrollstitch` (go); each target is stamped with a hash of its sources + build command, so an unchanged tree skips the compiler |
-| `deploy.sh deploy` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, then `hyprctl reload` |
-| `sync.sh` | System → repo: pulls current configs back in and re-exports package lists (run before committing) |
-| `pkg.sh export` | Writes explicitly-installed packages to `Packages/pkg-pacman.txt` / `pkg-aur.txt` (debug pkgs excluded) |
-| `pkg.sh install` | `pacman -Syu`, then installs both lists; failures go to `Packages/pkg-failed.txt` |
+| `deploy.sh deploy [profile]` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, applies the host profile, then `hyprctl reload` |
+| `sync.sh` | System → repo: pulls current configs back in (needs `rsync`) and re-exports package lists (run before committing) |
+| `pkg.sh export` | Writes explicitly-installed packages to `Packages/<profile>/` (debug pkgs excluded) |
+| `pkg.sh install` | `pacman -Syu`, then installs this profile's lists; failures go to `Packages/pkg-failed.txt` |
 
-> Both `deploy.sh` and `sync.sh` do `rm -rf` + copy on whole directories — they *replace*, not merge.  
-> The one exception is matugen's generated color files, which `deploy.sh` stashes and puts back.  
+> Both scripts *replace* whole directories rather than merging: `deploy.sh` does `rm -rf` + copy,
+> `sync.sh` uses `rsync --delete` (which also skips build output like `target/`).  
+> The exceptions are matugen's generated color files, which `deploy.sh` stashes and puts back, and
+> the deployed `host.*` files, which `sync.sh` leaves alone.  
 > Build stamps live in `.deploy-stamps/`; delete it to force a rebuild.
 
 ## Dynamic theming
@@ -117,9 +139,11 @@ wallset (rofi picker with previews)
 
 ## Waybar MPRIS popup
 
-Click the mpris module → a popup with cover art and playback controls.
+Click the mpris module → a popup with cover art and playback controls. Written in Rust
+(`config/waybar/scripts/mpris-popup/`) and built by `deploy.sh`; waybar's `on-click` points at
+`target/release/mpris-popup`.
 
-- Active version: **Rust** (`config/waybar/scripts/mpris-popup/`), built by `deploy.sh` (waybar's `on-click` points at `target/release/mpris-popup`).
+## Waybar workspaces
 
 The workspaces module is `ext/workspaces` (the ext-workspace-v1 protocol), not `hyprland/workspaces`:
 the latter clicks send Hyprland's legacy `dispatch workspace N` string, which the Lua config provider

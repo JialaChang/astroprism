@@ -4,12 +4,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$SCRIPT_DIR/host.sh"
+
 STAMP_DIR="$ROOT_DIR/.deploy-stamps"
 
-# funtions
+# back up a file or dir to {target}.backup, overwriting any previous backup
+# backup {target}
 backup() {
   local target=$1
-  # local timestamp=$(date +%m-%d_%H.%M)
 
   if [ -d "$target" ]; then
     echo "    -> Backing up dir $target..."
@@ -148,7 +150,60 @@ backup_all() {
   backup "$HOME/.zshrc"
 }
 
-# deploy files {src} {dest}
+# Settle the profile before anything destructive runs.
+# resolve_host_profile {profile from argv, may be empty}
+resolve_host_profile() {
+  local arg=$1
+
+  if [ -n "$arg" ]; then
+    if [ ! -d "$ROOT_DIR/config/hosts/$arg" ]; then
+      echo "==> Unknown host profile '$arg'"
+      echo "    available: $(host_profiles)"
+      return 1
+    fi
+    printf '%s\n' "$arg" >"$HOST_FILE"
+    echo "==> Host profile set to '$arg'"
+    return 0
+  fi
+
+  local current
+  current=$(host_profile)
+
+  if [ -z "$current" ]; then
+    echo "==> No host profile set for this machine."
+    echo "    Pick one and pass it once, it is remembered afterwards:"
+    echo "      ./deploy.sh deploy <profile>"
+    echo "    available: $(host_profiles)"
+    return 1
+  fi
+
+  if [ ! -d "$ROOT_DIR/config/hosts/$current" ]; then
+    echo "==> Host profile '$current' ($HOST_FILE) no longer exists"
+    echo "    available: $(host_profiles)"
+    return 1
+  fi
+
+  echo "==> Host profile: $current"
+}
+
+# Runs after deploy_all, which rm -rf's the dests.
+# Copies files in host to config, a failed copy fails the deploy.
+deploy_host() {
+  local profile
+  profile=$(host_profile)
+  local src="$ROOT_DIR/config/hosts/$profile"
+
+  echo "    -> Deploying host profile '$profile'..."
+  cp "$src/hypr-host.lua" "$HOME/.config/hypr/host.lua" &&
+    cp "$src/waybar-host.jsonc" "$HOME/.config/waybar/host.jsonc" &&
+    cp "$src/waybar-host.css" "$HOME/.config/waybar/host.css" &&
+    cp "$src/mpris-popup-margin" "$HOME/.config/waybar/mpris-popup-margin" || {
+    echo "    -> !! Failed to deploy host profile '$profile'"
+    return 1
+  }
+}
+
+# deploy files {src} {dest} [generated paths to keep, relative to dest...]
 deploy_all() {
   deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors"
   deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors"
@@ -177,15 +232,18 @@ build)
   echo "==> Build all the programs !"
   ;;
 deploy)
+  resolve_host_profile "$2" || exit 1
   build_all || exit 1
   echo "==> Build all the programs !"
   deploy_all
+  deploy_host || exit 1
   hyprctl reload > /dev/null
   echo "==> Deploy all the files !"
   ;;
 *)
-  echo "Usage: ./deploy.sh [deploy|backup|build]"
-  echo "    deploy  - deploy all the settings"
+  echo "Usage: ./deploy.sh [deploy [profile]|backup|build]"
+  echo "    deploy  - deploy all the settings; pass a profile once to set this"
+  echo "              machine's host profile (stored in ~/.config/astroprism-host)"
   echo "    backup - backup all your files will be replaced as .backup files"
   echo "    build  - compile the programs whose sources changed"
   ;;
