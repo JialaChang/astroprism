@@ -52,6 +52,7 @@ sync_dir ~/.config/waybar "$ROOT_DIR/config/waybar" 'host.jsonc' 'host.css' 'mpr
 sync_dir ~/.config/matugen "$ROOT_DIR/config/matugen"
 sync_dir ~/.config/rofi "$ROOT_DIR/config/rofi"
 sync_dir ~/.config/uwsm "$ROOT_DIR/config/uwsm"
+sync_dir ~/.config/fastfetch "$ROOT_DIR/config/fastfetch"
 
 sync_file ~/.config/starship.toml "$ROOT_DIR/config/starship.toml"
 

@@ -135,6 +135,7 @@ backup_all() {
   backup "$HOME/.config/matugen"
   backup "$HOME/.config/rofi"
   backup "$HOME/.config/uwsm"
+  backup "$HOME/.config/fastfetch"
 
   backup "$HOME/.bashrc"
   backup "$HOME/.zshrc"
@@ -204,6 +205,7 @@ deploy_all() {
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen" || failed=1
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors" || failed=1
   deploy "$ROOT_DIR/config/uwsm" "$HOME/.config/uwsm" "gpu-mode" || failed=1
+  deploy "$ROOT_DIR/config/fastfetch" "$HOME/.config/fastfetch" "big.jsonc" "small.jsonc" || failed=1
 
   deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset" || failed=1
   deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend" || failed=1

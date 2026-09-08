@@ -5,6 +5,8 @@
 **/rofi/colors/
 config/starship.toml
 config/waybar/clock.jsonc
+config/fastfetch/big.jsonc
+config/fastfetch/small.jsonc
 
 # per-machine state
 config/uwsm/gpu-mode
@@ -24,3 +26,4 @@ target/
 
 # settings
 .vscode/
+CLAUDE.md

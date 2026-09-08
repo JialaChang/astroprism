@@ -61,7 +61,7 @@ end
 -- Or execute your favorite apps at launch like this:
 --
 hl.on("hyprland.start", function()
-	hl.exec_cmd("kitty sh -c 'fastfetch; exec zsh'")
+	hl.exec_cmd("kitty sh -c 'fastfetch -c ~/.config/fastfetch/big.jsonc; FASTFETCH_SKIP=1 exec zsh'")
 	hl.exec_cmd("waybar")
 	hl.exec_cmd("/usr/lib/polkit-kde-authentication-agent-1")
 	hl.exec_cmd("fcitx5 -d")

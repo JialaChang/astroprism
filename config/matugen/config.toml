@@ -71,6 +71,15 @@ input_path = '~/.config/matugen/templates/starship-colors.toml'
 output_path = '~/.config/starship.toml'
 
 
+[templates.fastfetch_big]
+input_path = '~/.config/matugen/templates/fastfetch-big.jsonc'
+output_path = '~/.config/fastfetch/big.jsonc'
+
+[templates.fastfetch_small]
+input_path = '~/.config/matugen/templates/fastfetch-small.jsonc'
+output_path = '~/.config/fastfetch/small.jsonc'
+
+
 # GTK apps
 
 [templates.gtk3]
