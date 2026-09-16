@@ -2,14 +2,25 @@
 # Author: JialaChang & Claude
 # Toggle matugen's light/dark scheme for the wallpaper currently in use.
 
-STATE_FILE="$HOME/.cache/theme_mode"
+MODE_FILE="$HOME/.cache/theme_mode"
+PREFER_FILE="$HOME/.cache/theme_prefer"
 WALLPAPER_FILE="$HOME/.cache/last_wallpaper"
 
+shopt -s nullglob
+
 get_mode() {
-    if [ -f "$STATE_FILE" ]; then
-        cat "$STATE_FILE"
+    if [ -f "$MODE_FILE" ]; then
+        cat "$MODE_FILE"
     else
         echo "dark"
+    fi
+}
+
+get_prefer() {
+    if [ -f "$PREFER_FILE" ]; then
+        cat "$PREFER_FILE"
+    else
+        echo "saturation"
     fi
 }
 
@@ -34,11 +45,11 @@ toggle() {
     fi
     wallpaper=$(cat "$WALLPAPER_FILE")
 
-    if ! matugen image "$wallpaper" --mode "$new_mode" --prefer saturation; then
+    if ! matugen image "$wallpaper" --mode "$new_mode" --prefer "$(get_prefer)"; then
         notify-send "Theme Toggle" "matugen failed, theme not changed"
         exit 1
     fi
-    echo "$new_mode" >"$STATE_FILE"
+    echo "$new_mode" >"$MODE_FILE"
 
     # Global light/dark preference: GTK4 apps, the desktop portal
     gsettings set org.gnome.desktop.interface color-scheme "prefer-$new_mode"

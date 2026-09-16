@@ -302,7 +302,8 @@ hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit")) -- dwindle only
 hl.bind(mainMod .. "+ space", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. "+ B", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("bash -c 'pkill waybar || waybar & disown'"))
-hl.bind(mainMod .. " + M", hl.dsp.exec_cmd(rofiToggle(powermenu)))
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd(rofiToggle(powermenu)))
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("~/.local/bin/wallset"))
 -- workspace overview (hyprexpose daemon toggles on SIGUSR1)
 hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("pkill -SIGUSR1 hyprexpose"))
 -- screenshot

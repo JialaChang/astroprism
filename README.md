@@ -19,7 +19,7 @@
 
 - **Wallpaper-driven theming** — pick a wallpaper, the whole desktop recolors itself via [matugen](https://github.com/InioX/matugen) (Material You), light or dark
 - **Custom MPRIS popup** — cover art and playback controls, one click from the bar
-- **Workspace overview** — a fullscreen grid of live window thumbnails, `Super+Tab` to jump
+- **Workspace overview** — a fullscreen grid of live window thumbnails
 - **Screenshot applet** — desktop/window/area/timed shots, screen recording, and scroll capture that stitches a scrolling page into one tall PNG
 - **Reproducible installs** — exported package lists and deploy/sync scripts get the setup back in a few commands, on either machine
 
@@ -125,17 +125,20 @@ wallset
 The whole desktop is re-colored from the current wallpaper:
 
 ```
-wallset (rofi picker with previews)
-  └─ wallset-backend <image>
+wallset (rofi picker with previews, then a color-strategy row)
+  └─ wallset-backend <image> [--prefer strategy]
        ├─ awww img …                  # animated wallpaper switch
-       ├─ matugen image …             # generate colors from the image
+       ├─ matugen image … --mode … --prefer …   # generate colors from the image
        │    └─ templates → hyprland, kitty, rofi, waybar, swaync, btop, starship, GTK 3/4, hyprexpose
        ├─ restart waybar, reload swaync
        └─ remembers wallpaper in ~/.cache/last_wallpaper
 ```
 
 - Templates live in `config/matugen/templates/`, targets are wired up in `config/matugen/config.toml`.
-- `waybar/scripts/theme-toggle.sh` re-runs matugen in light/dark mode on the last wallpaper; state is kept in `~/.cache/theme_mode`.
+- `waybar/scripts/theme-toggle.sh` re-runs matugen in light/dark mode on the last wallpaper.
+- `~/.cache/theme_mode` and `~/.cache/theme_prefer` hold the current light/dark mode and matugen
+  `--prefer` color strategy; `wallset-backend` and `theme-toggle.sh` both read and write them, so
+  switching a wallpaper or toggling light/dark never overwrites the other's choice.
 
 ## Waybar MPRIS popup
 

@@ -60,14 +60,14 @@ mainbox {
 inputbar {
     enabled:                     true;
     spacing:                     10px;
-    margin:                      0% 28%;
+    margin:                      0% 15%;
     padding:                     12px 16px;
     border:                      1px solid;
     border-radius:               10px;
     border-color:                @outline-variant;
-    background-color:            @surface-low;
+    background-color:            @surface-container-low;
     text-color:                  @foreground;
-    children:                    [ "prompt", "entry" ];
+    children:                    [ "prompt", "textbox-prompt-colon", "entry" ];
 }
 
 prompt {
@@ -118,7 +118,7 @@ scrollbar {
     handle-width:                5px;
     handle-color:                @primary;
     border-radius:               4px;
-    background-color:            @surface-high;
+    background-color:            @surface-container-high;
 }
 
 /*****----- Elements -----*****/
@@ -148,9 +148,9 @@ element normal.urgent {
     text-color:                  @on-error-container;
 }
 element selected.normal {
-    background-color:            @selected;
+    background-color:            transparent;
     text-color:                  @on-primary-container;
-    border:                      0px solid;
+    border:                      2px solid;
     border-color:                @primary;
 }
 element selected.active {
@@ -186,7 +186,7 @@ error-message {
     border:                      1px solid;
     border-radius:               12px;
     border-color:                @error-container;
-    background-color:            @surface-low;
+    background-color:            @surface-container-low;
     text-color:                  @urgent;
 }
 textbox {

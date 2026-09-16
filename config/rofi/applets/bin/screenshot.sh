@@ -18,22 +18,12 @@ prompt='Screenshot'
 dir="$HOME/Pictures/Screenshot"
 mesg="DIR: $dir"
 
-if [[ "$theme" == *'type-1'* ]]; then
+if [[ ( "$theme" == *'type-1'* ) || ( "$theme" == *'type-3'* ) || ( "$theme" == *'type-5'* ) ]]; then
 	list_col='1'
 	list_row='6'
-	win_width='400px'
-elif [[ "$theme" == *'type-3'* ]]; then
-	list_col='1'
-	list_row='6'
-	win_width='120px'
-elif [[ "$theme" == *'type-5'* ]]; then
-	list_col='1'
-	list_row='6'
-	win_width='520px'
 elif [[ ( "$theme" == *'type-2'* ) || ( "$theme" == *'type-4'* ) ]]; then
 	list_col='6'
 	list_row='1'
-	win_width='670px'
 fi
 
 # Toggle state, checked up front so the menu labels below can reflect it.
@@ -55,14 +45,14 @@ if [[ -f "$screenrec_pid" ]] && kill -0 "$(cat "$screenrec_pid")" 2>/dev/null; t
 	screenrec_active=true
 fi
 
-# Geometry of the window focused when this script started. The rofi menu takes
-# focus itself, so 'Capture Window' has to use this rather than whatever is
-# active by the time an option is picked.
+# Geometry of the window focused when this script started.
+# The rofi menu takes focus itself, so has to use this rather
+# than whatever is active by the time an option is picked.
 initial_win_geom=$(hyprctl activewindow -j | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end')
 
 # Options
-# Only ever shown when nothing is recording -- a running capture stops without
-# the menu (see Actions below) -- so these labels never need a stop variant.
+# Only ever shown when nothing is recording,
+# a running capture stops without the menu.
 layout=`cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2`
 if [[ "$layout" == 'NO' ]]; then
 	option_1="󰹑 Capture Desktop"
@@ -82,9 +72,8 @@ fi
 
 # Rofi CMD
 rofi_cmd() {
-	rofi -theme-str "window {width: $win_width;}" \
-		-theme-str "listview {columns: $list_col; lines: $list_row;}" \
-		-theme-str 'textbox-prompt-colon {str: "";}' \
+	rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
+		-theme-str 'textbox-prompt-colon {str: "";}' \
 		-dmenu \
 		-p "$prompt" \
 		-mesg "$mesg" \
@@ -120,12 +109,12 @@ notify_only() {
 notify_view() {
 	notify_cmd_shot='dunstify -u low --replace=699'
 	# ${notify_cmd_shot} "Copied to clipboard."
-	imv "$dir/$file"
 	if [[ -e "$dir/$file" ]]; then
 		${notify_cmd_shot} "Screenshot Saved."
 	else
 		${notify_cmd_shot} "Screenshot Deleted."
 	fi
+	imv "$dir/$file"
 }
 
 # Copy screenshot to clipboard
@@ -141,8 +130,8 @@ countdown () {
 	done
 }
 
-# Block until rofi's surface is really gone, otherwise grim catches the menu
-# still painted on top of what we want.
+# Block until rofi's surface is really gone,
+# otherwise grim catches the menu still painted on top.
 wait_for_rofi () {
 	for _ in $(seq 1 50); do
 		hyprctl clients -j | jq -e 'all(.[]; (.class // "") | test("rofi"; "i") | not)' >/dev/null 2>&1 && break
@@ -287,16 +276,13 @@ run_cmd() {
 }
 
 # Actions
-# Called with a --optN flag (e.g. from a keybind): run that capture directly,
-# skipping the rofi menu.
+# Called with a --optN flag (e.g. from a keybind): run that capture directly.
 if [[ -n "$1" ]]; then
 	run_cmd "$1"
 	exit 0
 fi
 
-# A capture is already running, so treat this launch as its stop request and
-# skip the menu entirely -- opening rofi over the recorded region would put the
-# menu itself into the video (and into the frames scrollstitch works from).
+# A capture is already running, so stop request and skip the menu entirely.
 if $scrollcap_active; then
 	scrollcap
 	exit 0

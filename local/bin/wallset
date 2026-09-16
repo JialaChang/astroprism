@@ -11,8 +11,57 @@ cd "$WALL_DIR" || exit
 chosen=$(for a in *.jpg *.png; do echo -en "$a\0icon\x1f$a\n" ; done | rofi -dmenu -p "Select Wallpaper" -theme "${dir}/${theme}.rasi")
 
 if [ -n "$chosen" ]; then
-    # call walset.sh with the chosen filename (including extension)
-    wallset-backend "$WALL_DIR/$chosen"
+    mode_file="$HOME/.cache/theme_mode"
+    preview_mode=$([ -f "$mode_file" ] && cat "$mode_file" || echo "dark")
+    prefer_file="$HOME/.cache/theme_prefer"
+    current_prefer=$([ -f "$prefer_file" ] && cat "$prefer_file" || echo "saturation")
+
+    swatch_dir="/tmp/rofi-prefer-$UID"
+    mkdir -p "$swatch_dir"
+
+    swatch_for() {
+        local strategy=$1 name=$2 colors c1 c2 c3 swatch
+        colors=$(matugen image "$WALL_DIR/$chosen" --dry-run --mode "$preview_mode" --prefer "$strategy" -j hex 2>/dev/null \
+            | jq -r '"\(.colors.primary.default.color) \(.colors.secondary.default.color) \(.colors.tertiary.default.color)"')
+        IFS=' ' read -r c1 c2 c3 <<<"$colors"
+        swatch="$swatch_dir/$name.png"
+        magick \( -size 24x24 xc:"$c1" \) \( -size 24x24 xc:"$c2" \) \( -size 24x24 xc:"$c3" \) +append "$swatch" 2>/dev/null
+        echo -en "$name\0icon\x1f$swatch\n" >"$swatch_dir/$name.entry"
+    }
+
+    # Run the 6 matugen dry-runs in parallel instead of one after another,
+    # each writes its own .entry file (NUL bytes survive file I/O,
+    # unlike a $(...) var), then they're cat'd back together in a fixed order.
+    strategies=(darkness lightness saturation less-saturation value)
+    swatch_for "$current_prefer" "keep-current" &
+    for p in "${strategies[@]}"; do
+        swatch_for "$p" "$p" &
+    done
+    wait
+
+    prefer_menu_file="$swatch_dir/menu"
+    {
+        cat "$swatch_dir/keep-current.entry"
+        for p in "${strategies[@]}"; do
+            cat "$swatch_dir/$p.entry"
+        done
+    } >"$prefer_menu_file"
+
+    # Override the fullscreen grid theme down to one rounded,
+    # centered row of 6, with the inputbar swapped for a centered -mesg title.
+    prefer_chosen=$(rofi -dmenu -mesg "Color Preference" \
+        -theme-str "window {fullscreen: false; width: 900px; height: 270px; border-radius: 30px; background-color: @surface-container-lowest-75;}" \
+        -theme-str "mainbox {padding: 20px 40px; spacing: 20px; children: [\"message\", \"listview\"];}" \
+        -theme-str "message {padding: 0px; border: 0px solid; background-color: transparent;}" \
+        -theme-str "textbox {horizontal-align: 0.5;}" \
+        -theme-str "listview {columns: 6; lines: 1;}" \
+        -theme "${dir}/${theme}.rasi" <"$prefer_menu_file")
+
+    if [ -n "$prefer_chosen" ] && [ "$prefer_chosen" != "keep-current" ]; then
+        "$HOME/.local/bin/wallset-backend" "$WALL_DIR/$chosen" "$prefer_chosen"
+    else
+        "$HOME/.local/bin/wallset-backend" "$WALL_DIR/$chosen"
+    fi
 fi
 
 cd "$CWD" || exit

@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 
 FILE=$1
+PREFER_ARG=$2
 
-if [ -z "$FILE" ]; then
+if [ ! -f "$FILE" ]; then
   notify-send "Can not find wallpaper files..."
   exit 1
+fi
+
+MODE_FILE="$HOME/.cache/theme_mode"
+PREFER_FILE="$HOME/.cache/theme_prefer"
+mode=$([ -f "$MODE_FILE" ] && cat "$MODE_FILE" || echo "dark")
+
+if [ -n "$PREFER_ARG" ]; then
+  prefer="$PREFER_ARG"
+  echo "$prefer" >"$PREFER_FILE"
+else
+  prefer=$([ -f "$PREFER_FILE" ] && cat "$PREFER_FILE" || echo "saturation")
 fi
 
 # Change wallpaper
@@ -14,9 +26,10 @@ awww img "$FILE" \
   --transition-fps 60 \
   --transition-step 50
 
-matugen image "$FILE"
+matugen image "$FILE" --mode "$mode" --prefer "$prefer"
 echo "$FILE" >~/.cache/last_wallpaper
-pkill waybar && waybar &
+pkill waybar
+setsid -f waybar
 swaync-client -rs &
 
 notify-send "Wallpaper already change into $(basename "$FILE")"
