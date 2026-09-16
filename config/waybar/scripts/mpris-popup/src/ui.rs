@@ -11,6 +11,10 @@ use crate::art;
 use crate::mpris;
 
 const HIDE_DELAY_MS: u64 = 3000;
+/// How long the drag has to settle before the seek is actually sent.
+const SEEK_DEBOUNCE_MS: u64 = 80;
+/// How long to let a burst of D-Bus signals settle before refreshing.
+const REFRESH_COALESCE_MS: u64 = 30;
 
 const POPUP_WIDTH: i32 = 380;
 const POPUP_HEIGHT: i32 = 120;
@@ -32,6 +36,14 @@ fn popup_left_margin() -> i32 {
         .ok()
         .and_then(|s| s.trim().parse().ok())
         .unwrap_or(POPUP_LEFT_MARGIN_DEFAULT)
+}
+
+/// Send the position the drag last landed on, cancelling any scheduled send.
+fn send_seek(shared: &Shared) {
+    if let Some(id) = shared.pending_seek.take() {
+        id.remove();
+    }
+    mpris::playerctl(&["position", &shared.position.get().to_string()]);
 }
 
 fn fmt_time(seconds: f64) -> String {
@@ -57,6 +69,10 @@ pub(crate) struct Widgets {
 #[derive(Clone)]
 pub(crate) struct Shared {
     seeking: Rc<Cell<bool>>,
+    /// Debounces seeks: playerctl blocks the main loop, change-value fires per frame.
+    pending_seek: Rc<Cell<Option<glib::SourceId>>>,
+    /// Set while a refresh is scheduled, so a burst of signals costs one refresh.
+    refresh_queued: Rc<Cell<bool>>,
     playing: Rc<Cell<bool>>,
     position: Rc<Cell<f64>>,
     length: Rc<Cell<f64>>,
@@ -195,6 +211,23 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     widgets.dur_label.set_text(&fmt_time(length));
 }
 
+/// Collapse a burst of signals into one refresh; a track change otherwise fires
+/// several PropertiesChanged within milliseconds, each forking two playerctls.
+fn queue_refresh(widgets: &Widgets, shared: &Shared) {
+    if shared.refresh_queued.replace(true) {
+        return;
+    }
+    let widgets = widgets.clone();
+    let shared = shared.clone();
+    glib::source::timeout_add_local_once(
+        std::time::Duration::from_millis(REFRESH_COALESCE_MS),
+        move || {
+            shared.refresh_queued.set(false);
+            refresh(&widgets, &shared);
+        },
+    );
+}
+
 fn subscribe_dbus(widgets: Widgets, shared: Shared) {
     let Ok(conn) = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE) else {
         return;
@@ -211,7 +244,7 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
             None,
             gio::DBusSignalFlags::NONE,
             move |_conn, _sender, _path, _iface, _signal, _params| {
-                refresh(&widgets, &shared);
+                queue_refresh(&widgets, &shared);
             },
         );
     }
@@ -228,7 +261,7 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
             None,
             gio::DBusSignalFlags::NONE,
             move |_conn, _sender, _path, _iface, _signal, _params| {
-                refresh(&widgets, &shared);
+                queue_refresh(&widgets, &shared);
             },
         );
     }
@@ -241,7 +274,7 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
             Some(mpris::MPRIS_BUS_NAME),
             gio::DBusSignalFlags::NONE,
             move |_conn, _sender, _path, _iface, _signal, _params| {
-                refresh(&widgets, &shared);
+                queue_refresh(&widgets, &shared);
             },
         );
     }
@@ -384,6 +417,8 @@ pub(crate) fn build_window() -> gtk::Window {
     let (art_tx, art_rx) = glib::MainContext::channel::<(String, Vec<u8>)>(glib::Priority::DEFAULT);
     let shared = Shared {
         seeking: Rc::new(Cell::new(false)),
+        pending_seek: Rc::new(Cell::new(None)),
+        refresh_queued: Rc::new(Cell::new(false)),
         playing: Rc::new(Cell::new(false)),
         position: Rc::new(Cell::new(0.0)),
         length: Rc::new(Cell::new(0.0)),
@@ -437,20 +472,14 @@ pub(crate) fn build_window() -> gtk::Window {
         let widgets = widgets.clone();
         let shared = shared.clone();
         playpause_btn.connect_clicked(move |_| {
-            // Flip the icon first so the click feels instant; the refresh below
-            // confirms the player's real state.
+            // Flip the icon first so the click feels instant; the PlaybackStatus
+            // signal that follows confirms the player's real state.
             let is_playing = !shared.playing.get();
             shared.playing.set(is_playing);
             set_playpause_icon(&widgets, is_playing);
             set_paused_class(&widgets, !is_playing);
 
             mpris::playerctl(&["play-pause"]);
-
-            let widgets = widgets.clone();
-            let shared = shared.clone();
-            glib::source::timeout_add_local_once(std::time::Duration::from_millis(200), move || {
-                refresh(&widgets, &shared);
-            });
         });
     }
     next_btn.connect_clicked(|_| {
@@ -469,7 +498,19 @@ pub(crate) fn build_window() -> gtk::Window {
             shared_seek.position.set(value);
             widgets_seek.pos_label.set_text(&fmt_time(value));
 
-            mpris::playerctl(&["position", &value.to_string()]);
+            // Only the last value in a burst is sent; see Shared::pending_seek.
+            if let Some(id) = shared_seek.pending_seek.take() {
+                id.remove();
+            }
+            let shared_timer = shared_seek.clone();
+            let id = glib::source::timeout_add_local_once(
+                std::time::Duration::from_millis(SEEK_DEBOUNCE_MS),
+                move || {
+                    shared_timer.pending_seek.set(None);
+                    send_seek(&shared_timer);
+                },
+            );
+            shared_seek.pending_seek.set(Some(id));
             glib::Propagation::Proceed
         });
     }
@@ -484,6 +525,8 @@ pub(crate) fn build_window() -> gtk::Window {
         let shared = shared.clone();
         widgets.seek_scale.connect_button_release_event(move |_, _| {
             shared.seeking.set(false);
+            // Don't make the release wait out the debounce.
+            send_seek(&shared);
             glib::Propagation::Proceed
         });
     }

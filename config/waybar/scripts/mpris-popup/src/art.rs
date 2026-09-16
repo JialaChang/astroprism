@@ -1,6 +1,7 @@
 // Cover art: fetching, decoding, scaling and rounding.
 
-use std::io::Read;
+use std::sync::LazyLock;
+use std::time::Duration;
 
 use gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
@@ -58,25 +59,45 @@ fn round_pixbuf(pixbuf: &Pixbuf, radius: f64) -> Option<Pixbuf> {
     gdk::pixbuf_get_from_surface(&surface, 0, 0, w as i32, h as i32)
 }
 
+/// Compiled once; this runs on every refresh that finds no cover art.
+static YOUTUBE_ID_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})").unwrap()
+});
+
 pub(crate) fn youtube_thumbnail_url(page_url: &str) -> String {
     if page_url.is_empty() {
         return String::new();
     }
-    let re = regex::Regex::new(r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})").unwrap();
-    match re.captures(page_url) {
+    match YOUTUBE_ID_RE.captures(page_url) {
         Some(caps) => format!("https://i.ytimg.com/vi/{}/hqdefault.jpg", &caps[1]),
         None => String::new(),
     }
 }
 
+/// Cover URLs come from the player, so the response is untrusted: bound how long
+/// a fetch can hang and how much of it is held in memory.
+const ART_FETCH_TIMEOUT: Duration = Duration::from_secs(10);
+const ART_MAX_BYTES: u64 = 5 * 1024 * 1024;
+
 fn fetch_url(url: &str) -> Option<Vec<u8>> {
-    let mut resp = ureq::get(url)
+    // Built once: the timeout belongs to the agent, which also pools connections.
+    static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
+        ureq::Agent::config_builder()
+            .timeout_global(Some(ART_FETCH_TIMEOUT))
+            .build()
+            .into()
+    });
+
+    AGENT
+        .get(url)
         .header("User-Agent", "Mozilla/5.0")
         .call()
-        .ok()?;
-    let mut data = Vec::new();
-    resp.body_mut().as_reader().read_to_end(&mut data).ok()?;
-    Some(data)
+        .ok()?
+        .body_mut()
+        .with_config()
+        .limit(ART_MAX_BYTES)
+        .read_to_vec()
+        .ok()
 }
 
 fn path_from_file_url(url: &str) -> String {
