@@ -6,6 +6,8 @@ WALL_DIR="$HOME/.config/wallpapers"
 SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CWD="$(pwd)"
 IFS=$'\n'
+shopt -s nullglob
+
 cd "$WALL_DIR" || exit
 
 chosen=$(for a in *.jpg *.png; do echo -en "$a\0icon\x1f$a\n" ; done | rofi -dmenu -p "Select Wallpaper" -theme "${dir}/${theme}.rasi")
@@ -64,4 +66,5 @@ if [ -n "$chosen" ]; then
     fi
 fi
 
+rm -rf "$swatch_dir"
 cd "$CWD" || exit

@@ -6,8 +6,6 @@ MODE_FILE="$HOME/.cache/theme_mode"
 PREFER_FILE="$HOME/.cache/theme_prefer"
 WALLPAPER_FILE="$HOME/.cache/last_wallpaper"
 
-shopt -s nullglob
-
 get_mode() {
     if [ -f "$MODE_FILE" ]; then
         cat "$MODE_FILE"

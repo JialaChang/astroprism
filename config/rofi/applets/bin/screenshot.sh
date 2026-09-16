@@ -13,7 +13,6 @@
 source "$HOME"/.config/rofi/applets/shared/theme.bash
 theme="$type/$style"
 
-# Theme Elements
 prompt='Screenshot'
 dir="$HOME/Pictures/Screenshot"
 mesg="DIR: $dir"
@@ -27,7 +26,9 @@ elif [[ ( "$theme" == *'type-2'* ) || ( "$theme" == *'type-4'* ) ]]; then
 fi
 
 # Toggle state, checked up front so the menu labels below can reflect it.
-scrollcap_dir="/tmp/rofi-scrollcap-$UID"
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+
+scrollcap_dir="$runtime_dir/rofi-scrollcap"
 scrollcap_pid="$scrollcap_dir/pid"
 scrollcap_video="$scrollcap_dir/capture.mp4"
 scrollstitch_bin="$(dirname "$(readlink -f "$0")")/scrollstitch/scrollstitch"
@@ -36,7 +37,7 @@ if [[ -f "$scrollcap_pid" ]] && kill -0 "$(cat "$scrollcap_pid")" 2>/dev/null; t
 	scrollcap_active=true
 fi
 
-screenrec_dir="/tmp/rofi-screenrec-$UID"
+screenrec_dir="$runtime_dir/rofi-screenrec"
 screenrec_pid="$screenrec_dir/pid"
 screenrec_video="$screenrec_dir/capture.mp4"
 screenrec_out_dir="$HOME/Videos/Screenrecord"
