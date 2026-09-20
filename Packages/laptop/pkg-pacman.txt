@@ -32,6 +32,7 @@ grub-theme-vimix
 gst-plugin-pipewire
 gum
 htop
+hypridle
 hyprland
 hyprlock
 hyprpaper
@@ -114,4 +115,4 @@ zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-09-16_12:52
+# Exported on 2026-09-20_15:29

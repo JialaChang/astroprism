@@ -188,6 +188,8 @@ deploy_host() {
   cp "$src/hypr-host.lua" "$HOME/.config/hypr/host.lua" &&
     cp "$src/waybar-host.jsonc" "$HOME/.config/waybar/host.jsonc" &&
     cp "$src/waybar-host.css" "$HOME/.config/waybar/host.css" &&
+    cp "$src/hyprlock-host.conf" "$HOME/.config/hypr/hyprlock-host.conf" &&
+    cp "$src/hypridle-host.conf" "$HOME/.config/hypr/hypridle.conf" &&
     cp "$src/mpris-popup-margin" "$HOME/.config/waybar/mpris-popup-margin" || {
     echo "    -> !! Failed to deploy host profile '$profile'"
     return 1

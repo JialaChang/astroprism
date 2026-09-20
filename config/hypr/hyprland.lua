@@ -68,6 +68,7 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd("awww-daemon")
 	hl.exec_cmd("bash -c 'sleep 1 && awww img $(cat ~/.cache/last_wallpaper)'")
 	hl.exec_cmd("hyprexpose")
+	hl.exec_cmd("hypridle")
 	-- Host-specific autostarts
 	for _, cmd in ipairs(host.autostart) do
 		hl.exec_cmd(cmd)

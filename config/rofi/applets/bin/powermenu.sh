@@ -90,7 +90,7 @@ confirm_run() {
 # Execute Command
 run_cmd() {
   if [[ "$1" == '--opt1' ]]; then
-    hyprlock
+    ~/.config/hypr/scripts/lock.sh --from-rofi
   elif [[ "$1" == '--opt2' ]]; then
     confirm_run 'hyprctl dispatch hl.dsp.exit()'
   elif [[ "$1" == '--opt3' ]]; then

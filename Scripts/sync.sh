@@ -45,7 +45,7 @@ echo "==> Syncing configs..."
 
 # host.* are deploy_host output; the tracked copies live in config/hosts/<profile>/, 
 # syncing them back would overwrite the template so exclude.
-sync_dir ~/.config/hypr "$ROOT_DIR/config/hypr" 'host.lua'
+sync_dir ~/.config/hypr "$ROOT_DIR/config/hypr" 'host.lua' 'hyprlock-host.conf' 'hypridle.conf'
 sync_dir ~/.config/kitty "$ROOT_DIR/config/kitty"
 sync_dir ~/.config/nvim "$ROOT_DIR/config/nvim"
 sync_dir ~/.config/waybar "$ROOT_DIR/config/waybar" 'host.jsonc' 'host.css' 'mpris-popup-margin'

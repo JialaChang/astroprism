@@ -15,6 +15,8 @@ config/uwsm/gpu-mode
 .deploy-stamps/
 pkg-failed.txt
 config/hypr/host.lua
+config/hypr/hyprlock-host.conf
+config/hypr/hypridle.conf
 config/waybar/host.jsonc
 config/waybar/host.css
 config/waybar/mpris-popup-margin

@@ -28,6 +28,12 @@ input_path = '~/.config/matugen/templates/hyprland-colors.lua'
 output_path = '~/.config/hypr/colors/colors.lua'
 post_hook = 'hyprctl reload'
 
+# No post_hook needed: hyprlock reads its config at launch, so the next lock
+# picks these up.
+[templates.hyprlock]
+input_path = '~/.config/matugen/templates/hyprlock-colors.conf'
+output_path = '~/.config/hypr/colors/hyprlock.conf'
+
 [templates.kitty]
 input_path = '~/.config/matugen/templates/kitty-colors.conf'
 output_path = '~/.config/kitty/colors/colors.conf'
