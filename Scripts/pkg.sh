@@ -53,14 +53,19 @@ install_packages() {
 
   # update system first
   echo "==> Updating system..."
-  sudo pacman -Syu --noconfirm
+  # avoid a partial upgrade
+  if ! sudo pacman -Syu --noconfirm; then
+    echo "==> Error: system update failed, aborting!"
+    exit 1
+  fi
 
   # clear previous failed log
   >"$FAILED_TXT"
 
   echo ""
   echo "==> Installing pacman packages..."
-  while IFS= read -r pkg; do
+  # read lists via fd 3 so pacman/yay/sudo can't eat lines from stdin
+  while IFS= read -r pkg <&3; do
     [[ "$pkg" =~ ^#|^$ ]] && continue
     echo "    -> installing $pkg..."
     if sudo pacman -S --needed --noconfirm "$pkg"; then
@@ -69,11 +74,11 @@ install_packages() {
       ((pacman_fail++))
       echo "[pacman] $pkg" >>"$FAILED_TXT"
     fi
-  done <"$PACMAN_TXT"
+  done 3<"$PACMAN_TXT"
 
   echo ""
   echo "==> Installing AUR packages..."
-  while IFS= read -r pkg; do
+  while IFS= read -r pkg <&3; do
     [[ "$pkg" =~ ^#|^$ ]] && continue
     echo "    -> installing $pkg..."
     if yay -S --needed --noconfirm "$pkg"; then
@@ -82,7 +87,7 @@ install_packages() {
       ((aur_fail++))
       echo "[aur] $pkg" >>"$FAILED_TXT"
     fi
-  done <"$AUR_TXT"
+  done 3<"$AUR_TXT"
 
   echo ""
   echo "==> Packages installed!"

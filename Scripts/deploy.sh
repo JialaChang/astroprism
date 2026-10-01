@@ -177,7 +177,7 @@ resolve_host_profile() {
   echo "==> Host profile: $current"
 }
 
-# Runs after deploy_all, which rm -rf's the dests.
+# Runs after deploy_all.
 # Copies files in host to config, a failed copy fails the deploy.
 deploy_host() {
   local profile
@@ -200,10 +200,13 @@ deploy_host() {
 deploy_all() {
   local failed=0
 
-  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors" || failed=1
+  # keep host files so a failed deploy can't leave them deleted
+  deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors" \
+    "host.lua" "hyprlock-host.conf" "hypridle.conf" || failed=1
   deploy "$ROOT_DIR/config/kitty" "$HOME/.config/kitty" "colors" || failed=1
   deploy "$ROOT_DIR/config/nvim" "$HOME/.config/nvim" || failed=1
-  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css" "clock.jsonc" || failed=1
+  deploy "$ROOT_DIR/config/waybar" "$HOME/.config/waybar" "colors.css" "clock.jsonc" \
+    "host.jsonc" "host.css" "mpris-popup-margin" || failed=1
   deploy "$ROOT_DIR/config/matugen" "$HOME/.config/matugen" || failed=1
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors" || failed=1
   deploy "$ROOT_DIR/config/uwsm" "$HOME/.config/uwsm" "gpu-mode" || failed=1
@@ -218,6 +221,20 @@ deploy_all() {
   deploy "$ROOT_DIR/zshrc" "$HOME/.zshrc" || failed=1
 
   return $failed
+}
+
+# Restart daemons so they pick up the deployed configs
+restart_daemons() {
+  hyprctl reload >/dev/null
+  echo "    -> Restarting hyprland..."
+
+  local d
+  for d in hypridle waybar; do
+    if pkill -x "$d"; then
+      echo "    -> Restarting $d..."
+      setsid -f "$d" >/dev/null 2>&1
+    fi
+  done
 }
 
 case "$1" in
@@ -235,7 +252,7 @@ deploy)
   echo "==> Build all the programs !"
   deploy_all || exit 1
   deploy_host || exit 1
-  hyprctl reload > /dev/null
+  restart_daemons
   echo "==> Deploy all the files !"
   ;;
 *)

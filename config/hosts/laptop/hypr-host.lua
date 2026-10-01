@@ -5,5 +5,6 @@ return {
 	-- Extra processes to autostart on this host.
 	autostart = {
 		"blueman-applet",
+		"~/.config/waybar/scripts/charge-limit.sh restore",
 	},
 }

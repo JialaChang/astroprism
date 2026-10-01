@@ -1,0 +1,4 @@
+# Default the max charge to 80% and let wheel change it (waybar battery click).
+# Install: sudo cp system/udev/90-charge-limit.rules /etc/udev/rules.d/
+# Apply now: sudo udevadm control --reload && sudo udevadm trigger --action=add -s power_supply
+ACTION=="add", SUBSYSTEM=="power_supply", KERNEL=="BAT0", ATTR{charge_control_end_threshold}="80", RUN+="/bin/chgrp wheel /sys%p/charge_control_end_threshold", RUN+="/bin/chmod g+w /sys%p/charge_control_end_threshold"

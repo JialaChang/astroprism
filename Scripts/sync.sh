@@ -15,7 +15,7 @@ sync_dir() {
   done
 
   if [ -d "$src" ]; then
-    mkdir -p "$dest"
+    mkdir -p "$dest" || return 1
     rsync -a --delete \
       --exclude 'target' \
       --exclude 'node_modules' \
@@ -23,7 +23,10 @@ sync_dir() {
       --exclude '__pycache__' \
       --exclude '*.pyc' \
       "${extra[@]}" \
-      "$src/" "$dest/"
+      "$src/" "$dest/" || {
+      echo " -> !! Failed to sync $src"
+      return 1
+    }
     echo " -> synced $src"
   else
     echo " -> $src not found, skipping..."
@@ -34,37 +37,39 @@ sync_file() {
   local src=$1
   local dest=$2
   if [ -f "$src" ]; then
-    cp "$src" "$dest"
+    cp "$src" "$dest" || {
+      echo " -> !! Failed to sync $src"
+      return 1
+    }
     echo " -> synced $src"
   else
     echo " -> $src not found, skipping..."
   fi
 }
 
+failed=0
+
 echo "==> Syncing configs..."
 
 # host.* are deploy_host output; the tracked copies live in config/hosts/<profile>/, 
 # syncing them back would overwrite the template so exclude.
-sync_dir ~/.config/hypr "$ROOT_DIR/config/hypr" 'host.lua' 'hyprlock-host.conf' 'hypridle.conf'
-sync_dir ~/.config/kitty "$ROOT_DIR/config/kitty"
-sync_dir ~/.config/nvim "$ROOT_DIR/config/nvim"
-sync_dir ~/.config/waybar "$ROOT_DIR/config/waybar" 'host.jsonc' 'host.css' 'mpris-popup-margin'
-sync_dir ~/.config/matugen "$ROOT_DIR/config/matugen"
-sync_dir ~/.config/rofi "$ROOT_DIR/config/rofi"
-sync_dir ~/.config/uwsm "$ROOT_DIR/config/uwsm"
-sync_dir ~/.config/fastfetch "$ROOT_DIR/config/fastfetch"
+sync_dir ~/.config/hypr "$ROOT_DIR/config/hypr" 'host.lua' 'hyprlock-host.conf' 'hypridle.conf' || failed=1
+sync_dir ~/.config/kitty "$ROOT_DIR/config/kitty" || failed=1
+sync_dir ~/.config/nvim "$ROOT_DIR/config/nvim" || failed=1
+sync_dir ~/.config/waybar "$ROOT_DIR/config/waybar" 'host.jsonc' 'host.css' 'mpris-popup-margin' || failed=1
+sync_dir ~/.config/matugen "$ROOT_DIR/config/matugen" || failed=1
+sync_dir ~/.config/rofi "$ROOT_DIR/config/rofi" || failed=1
+sync_dir ~/.config/uwsm "$ROOT_DIR/config/uwsm" || failed=1
+sync_dir ~/.config/fastfetch "$ROOT_DIR/config/fastfetch" || failed=1
 
-sync_file ~/.config/starship.toml "$ROOT_DIR/config/starship.toml"
-
-sync_file ~/.local/bin/wallset "$ROOT_DIR/local/bin/wallset"
-sync_file ~/.local/bin/wallset-backend "$ROOT_DIR/local/bin/wallset-backend"
-sync_file ~/.local/bin/prime-run "$ROOT_DIR/local/bin/prime-run"
-sync_file ~/.local/bin/gpu-mode "$ROOT_DIR/local/bin/gpu-mode"
-
-sync_file ~/.bashrc "$ROOT_DIR/bashrc"
-sync_file ~/.zshrc "$ROOT_DIR/zshrc"
+sync_file ~/.bashrc "$ROOT_DIR/bashrc" || failed=1
+sync_file ~/.zshrc "$ROOT_DIR/zshrc" || failed=1
 
 echo "==> Exporting packages..."
-"$ROOT_DIR/Scripts/pkg.sh" export
+"$ROOT_DIR/Scripts/pkg.sh" export || failed=1
 
+if [ "$failed" -ne 0 ]; then
+  echo "==> Done with errors, check the !! lines above"
+  exit 1
+fi
 echo "==> Done!"

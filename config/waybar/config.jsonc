@@ -71,6 +71,7 @@
     },
     "battery": {
         "format": "{capacity}% {icon}",
+        "on-click": "~/.config/waybar/scripts/charge-limit.sh toggle",
         "format-icons": ["", "", "", "", ""],
         "events": {
             "on-discharging-warning": "notify-send -u normal 'Low Battery'",
