@@ -11,8 +11,13 @@
 </p>
 
 <p align="center">
+  <img src="./Docs/fastfetch.png" width="48%" alt="rofi launcher">
+  <img src="./Docs/wallpaper.png" width="48%" alt="waybar mpris popup">
+</p>
+
+<p align="center">
   <img src="./Docs/rofi.png" width="48%" alt="rofi launcher">
-  <img src="./Docs/music.png" width="48%" alt="waybar mpris popup">
+  <img src="./Docs/script.png" width="48%" alt="waybar mpris popup">
 </p>
 
 ##  Features

@@ -73,7 +73,13 @@ fi
 
 # Rofi CMD
 rofi_cmd() {
-	rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
+	# Left/Right step between entries and wrap around; in this single-row
+	# layout it is rofi's row-up/row-down that move horizontally.
+	rofi -kb-move-char-back '' \
+		-kb-move-char-forward '' \
+		-kb-row-up 'Up,Left,Control+p' \
+		-kb-row-down 'Down,Right,Control+n' \
+		-theme-str "listview {columns: $list_col; lines: $list_row; cycle: true;}" \
 		-theme-str 'textbox-prompt-colon {str: "";}' \
 		-dmenu \
 		-p "$prompt" \

@@ -5,9 +5,8 @@ hyprexpose-git
 libcava
 matugen-bin
 mihomo-party-bin
-oh-my-posh
 sddm-astronaut-theme
 spotify
 visual-studio-code-bin
 yay
-# Exported on 2026-09-20_15:29
+# Exported on 2026-10-01_10:08

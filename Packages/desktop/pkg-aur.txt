@@ -2,7 +2,6 @@ claude-code
 clipse
 hyprexpose-git
 matugen-bin
-oh-my-posh
 sddm-astronaut-theme
 spotify
 visual-studio-code-bin

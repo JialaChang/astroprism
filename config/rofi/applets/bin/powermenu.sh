@@ -45,7 +45,13 @@ fi
 
 # Rofi CMD
 rofi_cmd() {
-  rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
+  # Left/Right step between entries and wrap around; in this single-row
+  # layout it is rofi's row-up/row-down that move horizontally.
+  rofi -kb-move-char-back '' \
+    -kb-move-char-forward '' \
+    -kb-row-up 'Up,Left,Control+p' \
+    -kb-row-down 'Down,Right,Control+n' \
+    -theme-str "listview {columns: $list_col; lines: $list_row; cycle: true;}" \
     -theme-str 'textbox-prompt-colon {str: "";}' \
     -dmenu \
     -p "$prompt" \
@@ -61,9 +67,13 @@ run_rofi() {
 
 # Confirmation CMD
 confirm_cmd() {
-  rofi -theme-str 'window {location: center; anchor: center; fullscreen: false; width: 350px;}' \
+  rofi -kb-move-char-back '' \
+    -kb-move-char-forward '' \
+    -kb-row-up 'Up,Left,Control+p' \
+    -kb-row-down 'Down,Right,Control+n' \
+    -theme-str 'window {location: center; anchor: center; fullscreen: false; width: 350px;}' \
     -theme-str 'mainbox {orientation: vertical; children: [ "message", "listview" ];}' \
-    -theme-str 'listview {columns: 2; lines: 1;}' \
+    -theme-str 'listview {columns: 2; lines: 1; cycle: true;}' \
     -theme-str 'element-text {horizontal-align: 0.5;}' \
     -theme-str 'textbox {horizontal-align: 0.5;}' \
     -dmenu \

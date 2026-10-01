@@ -110,9 +110,10 @@ xf86-video-amdgpu
 xf86-video-ati
 xf86-video-nouveau
 yazi
+zip
 zoxide
 zram-generator
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
-# Exported on 2026-09-20_15:29
+# Exported on 2026-10-01_10:08

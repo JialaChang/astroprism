@@ -34,7 +34,6 @@ export EDITOR='nvim'
 export VISUAL='nvim'
 
 # Alias
-alias nv='neovide &disown'
 alias ls='eza --icons=always --group-directories-first'
 alias ll='eza -la --icons=always --group-directories-first --git'
 alias lt='eza --tree --level=2 --icons=always --group-directories-first'
@@ -44,9 +43,11 @@ alias ff='clear && fastfetch -c ~/.config/fastfetch/big.jsonc'
 alias ffs='clear && fastfetch -c ~/.config/fastfetch/small.jsonc'
 alias lgit='lazygit'
 
-alias spotify='spotify &disown'
-alias discord='discord &> /dev/null &disown'
-
 alias rofi='rofi -show drun -theme ~/.config/rofi/launchers/type-1/style-7.rasi'
 alias powermenu='~/.config/rofi/applets/bin/powermenu.sh'
 alias screenshot='~/.config/rofi/applets/bin/screenshot.sh'
+
+# functions, not aliases: alias args always land at the end, after the `&`
+nv() { neovide "$@" & disown; }
+spotify() { command spotify "$@" & disown; }
+discord() { command discord "$@" &> /dev/null & disown; }
