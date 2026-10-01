@@ -66,7 +66,7 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd("/usr/lib/polkit-kde-authentication-agent-1")
 	hl.exec_cmd("fcitx5 -d")
 	hl.exec_cmd("awww-daemon")
-	hl.exec_cmd("bash -c 'sleep 1 && awww img $(cat ~/.cache/last_wallpaper)'")
+	hl.exec_cmd([[bash -c 'sleep 1 && f=$(cat ~/.cache/last_wallpaper 2>/dev/null) && [ -f "$f" ] && awww img "$f"']])
 	hl.exec_cmd("hyprexpose")
 	hl.exec_cmd("hypridle")
 	-- Host-specific autostarts
@@ -414,7 +414,7 @@ hl.window_rule({
 
 -- waybar's mpris popup hangs off the bar, so slide it in and out of the top
 -- edge rather than using the global fade. The namespace is set by the popup
--- itself (LAYER_NAMESPACE in waybar/scripts/mpris-popup/src/main.rs).
+-- itself (LAYER_NAMESPACE in waybar/scripts/mpris-popup/src/ui.rs).
 hl.layer_rule({
 	name = "mpris-popup-anim",
 	match = { namespace = "^mpris-popup$" },
@@ -459,7 +459,8 @@ hl.window_rule({
 -- peek tag
 hl.window_rule({
 	match = { tag = "peek" },
-	opacity = "0.3 override",
+	opacity = "0.5 override",
+	no_blur = true,
 })
 hl.window_rule({
 	match = { tag = "nopeek" },

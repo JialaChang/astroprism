@@ -1,14 +1,22 @@
-# oh-my-zsh
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME=""
+# Completion
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 
-plugins=(
-  git
-  zsh-syntax-highlighting
-  zsh-autosuggestions
-)
+# History
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE SHARE_HISTORY EXTENDED_HISTORY
 
-source $ZSH/oh-my-zsh.sh
+# Up/Down search history by the typed prefix
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[OA' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+bindkey '^[OB' down-line-or-beginning-search
 
 # fastfetch: small preview on every new terminal, skipped once at Hyprland
 # startup where hyprland.lua already ran the big one and set this.
@@ -22,12 +30,6 @@ eval "$(starship init zsh)"
 
 # Path
 export PATH="$HOME/.local/bin:$PATH"
-
-# History record setting
-HISTSIZE=10000
-SAVEHIST=10000
-setopt HIST_IGNORE_DUPS
-setopt HIST_IGNORE_SPACE
 
 # Editor
 export EDITOR='nvim'
@@ -51,3 +53,7 @@ alias screenshot='~/.config/rofi/applets/bin/screenshot.sh'
 nv() { neovide "$@" & disown; }
 spotify() { command spotify "$@" & disown; }
 discord() { command discord "$@" &> /dev/null & disown; }
+
+# Plugins from pacman; syntax-highlighting must be sourced last
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

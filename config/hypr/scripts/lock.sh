@@ -6,8 +6,6 @@ set -uo pipefail
 
 pidof -q hyprlock && exit 0
 
-command -v playerctl >/dev/null && playerctl pause 2>/dev/null
-
 from_rofi=false reuse_shot=false
 while [ $# -gt 0 ]; do
   case $1 in
@@ -18,8 +16,11 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# Skipped on --reuse-shot: already paused, and a slow player would stall the relock.
+[ "$reuse_shot" = false ] && command -v playerctl >/dev/null && playerctl pause 2>/dev/null
+
 # Its frame lingers, so give the compositor time to redraw or grim catches it.
-[ "$from_rofi" = true ] && sleep 0.05
+[ "$from_rofi" = true ] && sleep 0.2
 
 # Own shot, since hyprlock's `screenshot` would capture the lock on a relock.
 # Runtime dir (0700), not /tmp: it shows whatever was on screen.

@@ -11,13 +11,13 @@
 </p>
 
 <p align="center">
-  <img src="./Docs/fastfetch.png" width="48%" alt="rofi launcher">
-  <img src="./Docs/wallpaper.png" width="48%" alt="waybar mpris popup">
+  <img src="./Docs/fastfetch.png" width="48%" alt="fastfetch in kitty with the MPRIS popup open">
+  <img src="./Docs/wallpaper.png" width="48%" alt="wallset wallpaper picker">
 </p>
 
 <p align="center">
-  <img src="./Docs/rofi.png" width="48%" alt="rofi launcher">
-  <img src="./Docs/script.png" width="48%" alt="waybar mpris popup">
+  <img src="./Docs/rofi.png" width="48%" alt="rofi screenshot applet">
+  <img src="./Docs/script.png" width="48%" alt="deploy.sh deploy output">
 </p>
 
 ##  Features

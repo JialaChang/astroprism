@@ -3,14 +3,20 @@
 dir="$HOME/.config/rofi/launchers/type-3"
 theme='style-3'
 WALL_DIR="$HOME/.config/wallpapers"
-SCRIPTDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CWD="$(pwd)"
 IFS=$'\n'
 shopt -s nullglob
 
 cd "$WALL_DIR" || exit
 
-chosen=$(for a in *.jpg *.png; do echo -en "$a\0icon\x1f$a\n" ; done | rofi -dmenu -p "Select Wallpaper" -theme "${dir}/${theme}.rasi")
+chosen=$(for a in *.jpg *.png; do echo -en "$a\0icon\x1f$a\n" ; done | rofi -dmenu -p "Select Wallpaper" \
+    -kb-move-char-back "Control+b" -kb-move-char-forward "Control+f" \
+    -kb-row-left "Left,Control+Page_Up" -kb-row-right "Right,Control+Page_Down" \
+    -theme-str "mainbox {padding: 40px 10%; spacing: 30px;}" \
+    -theme-str "listview {lines: 4;}" \
+    -theme-str "element {padding: 10px; spacing: 8px;}" \
+    -theme-str "element-icon {size: 110px;}" \
+    -theme "${dir}/${theme}.rasi")
 
 if [ -n "$chosen" ]; then
     mode_file="$HOME/.cache/theme_mode"
@@ -64,7 +70,8 @@ if [ -n "$chosen" ]; then
     else
         "$HOME/.local/bin/wallset-backend" "$WALL_DIR/$chosen"
     fi
+
+    rm -rf "$swatch_dir"
 fi
 
-rm -rf "$swatch_dir"
 cd "$CWD" || exit

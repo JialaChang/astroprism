@@ -4,7 +4,7 @@
 
 set -uo pipefail
 
-hyprctl dispatch dpms on
+hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
 
 pkill -x hyprlock
 
@@ -15,11 +15,16 @@ for _ in {1..20}; do
 done
 pidof -q hyprlock && pkill -9 -x hyprlock
 
-# Detached: lock.sh lives until unlock. Retried: no lock at all is the worst case.
+# Detached: lock.sh lives until unlock. Retried only once the last one is gone,
+# so a slow start can't spawn a second hyprlock; no lock at all is the worst case.
 for _ in {1..5}; do
   setsid ~/.config/hypr/scripts/lock.sh --reuse-shot >/dev/null 2>&1 &
-  sleep 0.5
-  pidof -q hyprlock && exit 0
+  pid=$!
+  for _ in {1..30}; do
+    pidof -q hyprlock && exit 0
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.1
+  done
 done
 
 exit 1
