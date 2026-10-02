@@ -1,52 +1,42 @@
 # Manual setup
 
-`Scripts/deploy.sh` only writes under `$HOME`. Everything below lives in `/etc`,
-needs root, and is **not** restored by a deploy — redo it by hand on a fresh
-install or a new machine.
+`Scripts/deploy.sh` only writes under `$HOME`. These two live in `/etc`, need
+root, and no deploy restores them — redo them on a fresh install. Both apply to
+the laptop only: one needs a battery, the other a hybrid Intel + NVIDIA setup.
 
-Both are laptop-specific (ASUS Vivobook K6500ZC: Intel Iris Xe + RTX 3050).
-Skip them on a desktop or a single-GPU machine.
-
-## 1. Battery charge threshold
+## 1. Battery charge limit
 
 Charging to 100% and sitting on AC ages the cell. Capping at 80% is the single
 biggest thing you can do for its lifespan.
 
-`/etc/systemd/system/battery-charge-threshold.service`:
-
-```ini
-[Unit]
-Description=Set battery charge threshold to 80%
-After=multi-user.target
-StartLimitBurst=0
-
-[Service]
-Type=oneshot
-Restart=on-failure
-RestartSec=1
-ExecStart=/bin/bash -c 'echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
-
-[Install]
-WantedBy=multi-user.target suspend.target hibernate.target
-```
-
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now battery-charge-threshold.service
+sudo cp system/udev/90-charge-limit.rules /etc/udev/rules.d/
+sudo udevadm control --reload && sudo udevadm trigger --action=add -s power_supply
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold   # -> 80
 ```
 
-`suspend.target hibernate.target` in `WantedBy` is not optional: ASUS firmware
-resets the cap to 100 on resume, so the unit has to run again each time.
+The rule caps the charge at 80 and gives that sysfs file to the `wheel` group,
+so clicking waybar's battery can flip 80/100 without root. The firmware resets
+the cap on resume, so `charge-limit.sh restore` writes it back from the laptop
+profile's `autostart` and hypridle's `after_sleep_cmd`.
 
-Some models only accept 60/80/100. Write the value by hand first and read it
-back before wiring up the unit.
+Some models only accept 60/80/100, and the rule matches `BAT0`. Write the value
+by hand first and read it back.
+
+> [!WARNING]
+> Remove the old `battery-charge-threshold.service` if you have it — it forces 80
+> on every resume and fights the toggle:
+>
+> ```sh
+> sudo systemctl disable --now battery-charge-threshold.service
+> sudo rm /etc/systemd/system/battery-charge-threshold.service
+> ```
 
 ## 2. Keep Xorg off the dGPU
 
 SDDM's greeter runs an X server that autoconfigures onto the NVIDIA card and
-then keeps holding it for the whole session, which alone stops the dGPU from
-ever reaching runtime D3.
+holds it for the whole session, which alone stops the dGPU from ever reaching
+runtime D3.
 
 `/etc/X11/xorg.conf.d/20-intel-primary.conf`:
 
@@ -62,29 +52,10 @@ Section "Device"
 EndSection
 ```
 
-`AutoAddGPU off` is the load-bearing half — without it X still attaches the
-NVIDIA card as a secondary GPU screen even though the primary device is pinned
-to the iGPU. `BusID` is **decimal**, so check `lspci` and convert if the iGPU is
-not at `00:02.0`.
+`AutoAddGPU off` is the load-bearing half — without it X attaches the NVIDIA card
+as a secondary GPU screen even with the primary device pinned to the iGPU.
+`BusID` is **decimal**, so check `lspci` and convert if the iGPU is not at
+`00:02.0`.
 
-Verify after a reboot — the Processes block should be empty:
-
-```sh
-nvidia-smi
-```
-
-If the greeter fails to come up, drop to a TTY (Ctrl+Alt+F2) and delete the
-file.
-
-## The rest is in the repo
-
-The userspace half of the GPU work is deployed normally and needs no root:
-
-- `config/uwsm/env-hyprland` — points the compositor at the iGPU and hides the
-  NVIDIA EGL vendor and Vulkan ICD, so nothing loads the driver just by probing
-- `local/bin/gpu-mode` — `igpu` (default) / `hybrid`, takes effect on re-login
-- `local/bin/prime-run` — hands the NVIDIA libraries back to one app
-- `config/waybar/scripts/gpu.sh` — reads `runtime_status` from sysfs before
-  calling `nvidia-smi`, because querying a sleeping GPU wakes it
-
-Idle draw with all of it in place: ~9.6 W, against ~15 W with the dGPU awake.
+Reboot and check that `nvidia-smi` shows an empty Processes block. If the greeter
+does not come up, drop to a TTY (Ctrl+Alt+F2) and delete the file.
