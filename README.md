@@ -26,6 +26,8 @@
 - **Custom MPRIS popup** — cover art and playback controls, one click from the bar
 - **Workspace overview** — a fullscreen grid of live window thumbnails
 - **Screenshot applet** — desktop/window/area/timed shots, screen recording, and scroll capture that stitches a scrolling page into one tall PNG
+- **Themed lock screen** — hyprlock recolored from the wallpaper, with hypridle handling the idle dim/lock/blank/suspend schedule
+- **Battery charge limit** (laptop) — click the bar's battery to cap charging at 80%, reapplied on boot and after every resume
 - **Reproducible installs** — exported package lists and deploy/sync scripts get the setup back in a few commands, on either machine
 
 ## What's inside
@@ -40,7 +42,7 @@
 | Editor | Neovim (LazyVim & Neovide) |
 | Shell | zsh + starship (bash config kept as fallback) |
 | Notifications | swaync |
-| Lockscreen | hyprlock |
+| Lockscreen | hyprlock (matugen-themed) + hypridle for idle locking |
 | Wallpaper | awww + `wallset` script |
 | Theming | [matugen](https://github.com/InioX/matugen) |
 | Display manager | SDDM (`sddm-astronaut-theme`) |
@@ -49,39 +51,19 @@
 ## Repo layout
 
 ```
-config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, uwsm, wallpapers)
-config/hosts/→ per-machine values (see Host profiles below)
-local/bin/   → ~/.local/bin/…     (wallset, wallset-backend, gpu-mode, prime-run)
+config/      → ~/.config/…        (hypr, kitty, nvim, waybar, matugen, rofi, uwsm, fastfetch, wallpapers)
+config/hosts/→ per-machine values (one dir per profile — see config/hosts/README.md)
+local/bin/   → ~/.local/bin/…     (wallset, wallset-backend, gpu-mode, prime-run — deploy-only)
 bashrc/zshrc → ~/.bashrc, ~/.zshrc
 Packages/    → exported package lists, one dir per host profile
 Scripts/     → deploy.sh, sync.sh, pkg.sh
+system/udev/ → /etc/udev/rules.d/… (root, installed by hand — see Docs/manual-setup.md)
 Docs/        → screenshots + manual-setup.md (the /etc bits deploy.sh can't write)
 ```
 
 Everything matugen writes is generated, not tracked — the templates in `config/matugen/templates/`
 are the source of truth, and `deploy.sh` keeps the generated files in place when it redeploys a
 config directory.
-
-## Host profiles
-
-The desktop and the laptop want different font sizes, gaps and waybar modules. Rather than keeping a
-branch per machine, those values live in `config/hosts/<profile>/` and `deploy.sh` copies them into
-place as `host.*` files that the main configs pull in.
-
-Both machines share a hostname, so the profile is stored in `~/.config/astroprism-host` instead of
-being detected. Pass it once to set or change it:
-
-```sh
-./Scripts/deploy.sh deploy laptop   # writes ~/.config/astroprism-host, then deploys
-./Scripts/deploy.sh deploy          # later runs reuse it
-```
-
-The profile also picks the package lists (`Packages/<profile>/`), so each machine's `pkg.sh export`
-records its own hardware instead of overwriting the other's.
-
-The deployed `host.*` files are `sync.sh`-excluded and gitignored — edit
-`config/hosts/<profile>/` instead. To add a machine, copy an existing profile directory and deploy
-with its name.
 
 ## Installation
 
@@ -108,33 +90,44 @@ cd astroprism
 wallset
 ```
 
+> [!IMPORTANT]
+> Step 4 is not cosmetic. Every config that pulls in a matugen-generated file — `hyprland.lua`,
+> waybar's `clock.jsonc`, `hyprlock.conf` — needs `wallset` to have run once. hyprlock will not
+> start without its colors, which means the screen will not lock, so run `hyprlock` by hand after
+> the first deploy and check that your password unlocks it before trusting the idle timer.
+
 ## Scripts
 
 | Script | What it does |
 |---|---|
 | `deploy.sh backup` | Backs up every target as `*.backup`; run manually before `deploy` if you want a safety copy |
 | `deploy.sh build` | Compiles `mpris-popup` (cargo) and `scrollstitch` (go); each target is stamped with a hash of its sources + build command, so an unchanged tree skips the compiler |
-| `deploy.sh deploy [profile]` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, applies the host profile, then `hyprctl reload` |
-| `sync.sh` | System → repo: pulls current configs back in (needs `rsync`) and re-exports package lists (run before committing) |
+| `deploy.sh deploy [profile]` | `build`, then repo → system: copies all configs into `~/.config`, `~/.local/bin`, dotfiles into `~`, applies the host profile, then reloads Hyprland and restarts hypridle and waybar |
+| `sync.sh` | System → repo: pulls `~/.config` and the shell rc files back in (needs `rsync`) and re-exports package lists (run before committing). `local/bin/` is left out on purpose — see below |
 | `pkg.sh export` | Writes explicitly-installed packages to `Packages/<profile>/` (debug pkgs excluded) |
 | `pkg.sh install` | `pacman -Syu`, then installs this profile's lists; failures go to `Packages/pkg-failed.txt` |
 
-> Both scripts *replace* whole directories rather than merging: `deploy.sh` does `rm -rf` + copy,
-> `sync.sh` uses `rsync --delete` (which also skips build output like `target/`).  
-> The exceptions are matugen's generated color files, which `deploy.sh` stashes and puts back, and
-> the deployed `host.*` files, which `sync.sh` leaves alone.  
+> Both scripts *replace* whole directories rather than merging — each uses `rsync --delete` (which
+> also skips build output like `target/`), and single files are copied straight over.  
+> Generated and per-machine files are excluded rather than overwritten, so neither direction ever
+> touches them: matugen's color output, and the deployed `host.*` files that belong to
+> `config/hosts/<profile>/`.  
+> `local/bin/` is deploy-only: those four scripts are repo-authoritative, so `sync.sh` never pulls
+> them back and a scratch edit on the machine cannot land in the repo. Edit them here, then deploy —
+> a live edit to `~/.local/bin/` is overwritten by the next `deploy`.  
 > Build stamps live in `.deploy-stamps/`; delete it to force a rebuild.
 
 ## Dynamic theming
 
-The whole desktop is re-colored from the current wallpaper:
+The whole desktop is re-colored from the current wallpaper. `Super+M` opens the picker:
 
 ```
 wallset (rofi picker with previews, then a color-strategy row)
   └─ wallset-backend <image> [--prefer strategy]
        ├─ awww img …                  # animated wallpaper switch
        ├─ matugen image … --mode … --prefer …   # generate colors from the image
-       │    └─ templates → hyprland, kitty, rofi, waybar, swaync, btop, starship, GTK 3/4, hyprexpose
+       │    └─ templates → hyprland, hyprlock, kitty, rofi, waybar, swaync, btop,
+       │                   starship, fastfetch, GTK 3/4, hyprexpose
        ├─ restart waybar, reload swaync
        └─ remembers wallpaper in ~/.cache/last_wallpaper
 ```
@@ -148,8 +141,14 @@ wallset (rofi picker with previews, then a color-strategy row)
 ## Waybar MPRIS popup
 
 Click the mpris module → a popup with cover art and playback controls. Written in Rust
-(`config/waybar/scripts/mpris-popup/`) and built by `deploy.sh`; waybar's `on-click` points at
-`target/release/mpris-popup`.
+(`config/waybar/scripts/mpris-popup/`, split into `art`, `mpris` and `ui` modules) and built by
+`deploy.sh`, which copies the binary next to its sources so the deployed config carries no
+`target/`; waybar's `on-click` points at `~/.config/waybar/scripts/mpris-popup/mpris-popup`.
+
+State is signal-driven rather than polled: `PropertiesChanged` from playerctld plus `Seeked` for the
+position MPRIS never notifies on. Bursts of those signals are coalesced into one refresh and seek
+drags are debounced, because every `playerctl` call is a fork that would otherwise block the GTK main
+loop. Remote cover art is fetched off-thread with a timeout and a size cap.
 
 ## Waybar workspaces
 

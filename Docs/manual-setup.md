@@ -1,46 +1,41 @@
 # Manual setup
 
 `Scripts/deploy.sh` only writes under `$HOME`. Everything below lives in `/etc`,
-needs root, and is **not** restored by a deploy — redo it by hand on a fresh
-install or a new machine.
+needs root, and is **not** restored by a deploy — redo it on a fresh install or
+a new machine.
 
 Both are laptop-specific (ASUS Vivobook K6500ZC: Intel Iris Xe + RTX 3050).
 Skip them on a desktop or a single-GPU machine.
 
-## 1. Battery charge threshold
+## 1. Battery charge limit
 
 Charging to 100% and sitting on AC ages the cell. Capping at 80% is the single
 biggest thing you can do for its lifespan.
 
-`/etc/systemd/system/battery-charge-threshold.service`:
-
-```ini
-[Unit]
-Description=Set battery charge threshold to 80%
-After=multi-user.target
-StartLimitBurst=0
-
-[Service]
-Type=oneshot
-Restart=on-failure
-RestartSec=1
-ExecStart=/bin/bash -c 'echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
-
-[Install]
-WantedBy=multi-user.target suspend.target hibernate.target
-```
+The rule is in the repo, so this one is a copy rather than a file to write:
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now battery-charge-threshold.service
+sudo cp system/udev/90-charge-limit.rules /etc/udev/rules.d/
+sudo udevadm control --reload && sudo udevadm trigger --action=add -s power_supply
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold   # -> 80
 ```
 
-`suspend.target hibernate.target` in `WantedBy` is not optional: ASUS firmware
-resets the cap to 100 on resume, so the unit has to run again each time.
+It caps the charge at 80 and gives that sysfs file to the `wheel` group, so
+clicking waybar's battery can flip 80/100 without root. ASUS firmware resets the
+cap on resume, so `charge-limit.sh restore` writes it back from the laptop
+profile's `autostart` and hypridle's `after_sleep_cmd`.
 
-Some models only accept 60/80/100. Write the value by hand first and read it
-back before wiring up the unit.
+> [!WARNING]
+> Remove the old `battery-charge-threshold.service` if you have it — it forces 80
+> on every resume and fights the toggle:
+>
+> ```sh
+> sudo systemctl disable --now battery-charge-threshold.service
+> sudo rm /etc/systemd/system/battery-charge-threshold.service
+> ```
+
+Some models only accept 60/80/100, and the rule matches `BAT0`. Write the value
+by hand first and read it back.
 
 ## 2. Keep Xorg off the dGPU
 
