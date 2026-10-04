@@ -2,7 +2,7 @@
 {
     "clock": {
         "format": "{:%H:%M}  ",
-        "tooltip-format": "<tt><small>{calendar}</small></tt>",
+        "tooltip-format": "<tt>{calendar}</tt>",
         "calendar": {
             // Starts on the single-month view
             // on-click-right toggles to the full year grid

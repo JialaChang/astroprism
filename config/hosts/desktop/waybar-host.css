@@ -5,12 +5,13 @@
   font-size: 14px;
 }
 
+/* .5 so the two animating widths still ceil to the resting total. */
 #workspaces button {
-  min-width: 25px;
+  min-width: 24.5px;
 }
 
 #workspaces button.active {
-  min-width: 40px;
+  min-width: 39.5px;
 }
 
 tooltip label {

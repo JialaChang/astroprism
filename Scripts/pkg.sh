@@ -9,12 +9,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 source "$SCRIPT_DIR/host.sh"
+source "$SCRIPT_DIR/msg.sh"
 
 # Package lists are per-machine
 PROFILE=$(host_profile)
 if [ -z "$PROFILE" ]; then
-  echo "==> No host profile set. Run: ./deploy.sh deploy <profile>"
-  echo "    available: $(host_profiles)"
+  error "No host profile set, run: ./deploy.sh deploy <profile>"
+  plain "available: $(host_profiles)" >&2
   exit 1
 fi
 
@@ -24,27 +25,27 @@ AUR_TXT="$PKG_DIR/pkg-aur.txt"
 FAILED_TXT="$ROOT_DIR/Packages/pkg-failed.txt"
 
 export_packages() {
-  echo "==> Exporting package list for '$PROFILE'..."
+  msg "Exporting package list for '$PROFILE'..."
   mkdir -p "$PKG_DIR"
   # exclude debug packages
   comm -23 <(pacman -Qeq | sort) <(pacman -Qmq | sort) | grep -v '\-debug$' >"$PACMAN_TXT"
   pacman -Qmq | grep -v '\-debug$' >"$AUR_TXT"
   echo "# Exported on $(date +%Y-%m-%d_%H:%M)" >>"$PACMAN_TXT"
   echo "# Exported on $(date +%Y-%m-%d_%H:%M)" >>"$AUR_TXT"
-  echo "    -> exported to 'Packages/$PROFILE/pkg-pacman.txt'"
-  echo "    -> exported to 'Packages/$PROFILE/pkg-aur.txt'"
-  echo "==> Export done!"
+  msg2 "$(tilde "$PACMAN_TXT")"
+  msg2 "$(tilde "$AUR_TXT")"
+  msg "Export finished."
 }
 
 install_packages() {
   # pre-flight checks
   if [ ! -f "$PACMAN_TXT" ] || [ ! -f "$AUR_TXT" ]; then
-    echo "==> Error: no package list for '$PROFILE', run './pkg.sh export' first!"
+    error "No package list for '$PROFILE', run './pkg.sh export' first"
     exit 1
   fi
 
   if ! command -v yay &>/dev/null; then
-    echo "==> Error: yay not found, please install yay first!"
+    error "yay not found, install it first"
     exit 1
   fi
 
@@ -52,10 +53,10 @@ install_packages() {
   sudo -v
 
   # update system first
-  echo "==> Updating system..."
+  msg "Updating system..."
   # avoid a partial upgrade
   if ! sudo pacman -Syu --noconfirm; then
-    echo "==> Error: system update failed, aborting!"
+    error "System update failed, aborting"
     exit 1
   fi
 
@@ -63,11 +64,11 @@ install_packages() {
   >"$FAILED_TXT"
 
   echo ""
-  echo "==> Installing pacman packages..."
+  msg "Installing pacman packages..."
   # read lists via fd 3 so pacman/yay/sudo can't eat lines from stdin
   while IFS= read -r pkg <&3; do
     [[ "$pkg" =~ ^#|^$ ]] && continue
-    echo "    -> installing $pkg..."
+    msg2 "$pkg"
     if sudo pacman -S --needed --noconfirm "$pkg"; then
       ((pacman_succ++))
     else
@@ -77,10 +78,10 @@ install_packages() {
   done 3<"$PACMAN_TXT"
 
   echo ""
-  echo "==> Installing AUR packages..."
+  msg "Installing AUR packages..."
   while IFS= read -r pkg <&3; do
     [[ "$pkg" =~ ^#|^$ ]] && continue
-    echo "    -> installing $pkg..."
+    msg2 "$pkg"
     if yay -S --needed --noconfirm "$pkg"; then
       ((aur_succ++))
     else
@@ -90,16 +91,16 @@ install_packages() {
   done 3<"$AUR_TXT"
 
   echo ""
-  echo "==> Packages installed!"
-  echo "    pacman : $pacman_succ success, $pacman_fail failed"
-  echo "    aur    : $aur_succ success, $aur_fail failed"
-  echo "    total  : $((pacman_succ + aur_succ)) success, $((pacman_fail + aur_fail)) failed"
+  msg "Install finished."
+  plain "pacman : $pacman_succ success, $pacman_fail failed"
+  plain "aur    : $aur_succ success, $aur_fail failed"
+  plain "total  : $((pacman_succ + aur_succ)) success, $((pacman_fail + aur_fail)) failed"
 
   if [ -s "$FAILED_TXT" ]; then
     echo ""
-    echo "==> Failed packages logged to 'Packages/pkg-failed.txt'"
+    warning "Failed packages logged to $(tilde "$FAILED_TXT")"
     echo "# Logged on $(date +%Y-%m-%d_%H:%M)" >>"$FAILED_TXT"
-    cat "$FAILED_TXT"
+    cat "$FAILED_TXT" >&2
   fi
 }
 
@@ -111,8 +112,8 @@ install)
   install_packages
   ;;
 *)
-  echo "Usage: ./pkg.sh [export|install]"
-  echo "    export  - export current packages to txt files"
-  echo "    install - install or update packages from txt files"
+  echo "Usage: ./pkg.sh {export|install}"
+  echo "    export  - write the explicitly installed packages to Packages/<profile>/"
+  echo "    install - update the system, then install this profile's package lists"
   ;;
 esac

@@ -39,5 +39,4 @@ alias screenshot='~/.config/rofi/applets/bin/screenshot.sh'
 
 # functions, not aliases: alias args always land at the end, after the `&`
 nv() { neovide "$@" & disown; }
-spotify() { command spotify "$@" & disown; }
-discord() { command discord "$@" &> /dev/null & disown; }
+icat() { command kitty +kitten icat "$@"; }

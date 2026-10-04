@@ -187,9 +187,9 @@
         ],
         "format-alt": "{percent}% {icon}",
         "on-click": "brightnessctl set +10%",
-        "on-click-right": "brightnessctl set 10%-",
+        "on-click-right": "brightnessctl -n$(( $(brightnessctl max) / 100 )) set 10%-",
         "on-scroll-up": "brightnessctl set +1%",
-        "on-scroll-down": "brightnessctl set 1%-",
+        "on-scroll-down": "brightnessctl -n$(( $(brightnessctl max) / 100 )) set 1%-",
         "scroll-step": 1,
         "tooltip": false
     },

@@ -312,6 +312,9 @@ hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("pkill -SIGUSR1 hyprexpose"))
 -- screenshot
 hl.bind(mainMod .. " + F", hl.dsp.exec_cmd(rofiToggle(screenshot)))
 hl.bind("CTRL + SHIFT + F", hl.dsp.exec_cmd(screenshot .. " --opt3"))
+hl.bind("Print", hl.dsp.exec_cmd(screenshot .. " --opt1"))
+hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd(screenshot .. " --opt2"))
+hl.bind("CTRL + SHIFT + Print", hl.dsp.exec_cmd(screenshot .. " --opt5"))
 -- toggle opacity
 hl.bind(mainMod .. " + CTRL + P", hl.dsp.window.tag({ tag = "peek" }))
 hl.bind(mainMod .. " + CTRL + O", hl.dsp.window.tag({ tag = "nopeek" }))
@@ -362,8 +365,8 @@ hl.bind(
 	hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),
 	{ locked = true, repeating = true }
 )
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n2 set 5%-"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl -e4 -n$(( $(brightnessctl max) / 100 )) set 5%+"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl -e4 -n$(( $(brightnessctl max) / 100 )) set 5%-"), { locked = true, repeating = true })
 
 -- Requires playerctl
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })

@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 source "$SCRIPT_DIR/host.sh"
+source "$SCRIPT_DIR/msg.sh"
 
 STAMP_DIR="$ROOT_DIR/.deploy-stamps"
 
@@ -14,14 +15,14 @@ backup() {
   local target=$1
 
   if [ -d "$target" ]; then
-    echo "    -> Backing up dir $target..."
+    msg2 "$(tilde "$target")"
     rm -rf "${target}.backup"
     cp -r "$target" "${target}.backup"
   elif [ -f "$target" ]; then
-    echo "    -> Backing up file $target..."
+    msg2 "$(tilde "$target")"
     cp "$target" "${target}.backup"
   else
-    echo "    -> $target not found, skipping backup..."
+    msg2 "$(tilde "$target"): not found, skipped"
   fi
 }
 
@@ -34,25 +35,30 @@ deploy() {
   local rel keep_args=()
 
   if [ -d "$src" ]; then
-    echo "    -> Deploying dir $src to $dest..."
+    msg2 "$(tilde "$dest")"
 
     for rel in "${keep[@]}"; do
       keep_args+=(--exclude "$rel")
     done
 
-    mkdir -p "$dest" || return 1
-    rsync -a --delete \
-      --exclude 'target' \
-      --exclude '.git' \
-      --exclude 'node_modules' \
-      "${keep_args[@]}" \
-      "$src/" "$dest/" || return 1
+    mkdir -p "$dest" &&
+      rsync -a --delete \
+        --exclude 'target' \
+        --exclude '.git' \
+        --exclude 'node_modules' \
+        "${keep_args[@]}" \
+        "$src/" "$dest/" || {
+      error "Failed to deploy $(tilde "$dest")"
+      return 1
+    }
   elif [ -f "$src" ]; then
-    echo "    -> Deploying file $src to $dest..."
-    mkdir -p "$(dirname "$dest")" || return 1
-    cp "$src" "$dest" || return 1
+    msg2 "$(tilde "$dest")"
+    mkdir -p "$(dirname "$dest")" && cp "$src" "$dest" || {
+      error "Failed to deploy $(tilde "$dest")"
+      return 1
+    }
   else
-    echo "    -> $src not found, skipping..."
+    warning "$(tilde "$src") not found, skipped"
   fi
 }
 
@@ -82,12 +88,12 @@ build() {
   local stamp="$STAMP_DIR/$label" hash
 
   if [ ! -d "$srcdir" ]; then
-    echo "    -> $srcdir not found, skipping build..."
+    warning "$(tilde "$srcdir") not found, skipped"
     return 0
   fi
 
   if ! hash=$(source_hash "$srcdir" "$out"); then
-    echo "    -> !! Cannot hash sources for $label"
+    error "Cannot hash sources for $label"
     return 1
   fi
 
@@ -95,16 +101,16 @@ build() {
   hash=$(printf '%s\0' "$hash" "$@" | sha256sum | cut -d' ' -f1)
 
   if [ -x "$out" ] && [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$hash" ]; then
-    echo "    -> $label unchanged, skipping build..."
+    msg2 "$label: unchanged, skipped"
     return 0
   fi
 
-  echo "    -> Building $label..."
+  msg2 "$label: building..."
   if (cd "$srcdir" && "$@"); then
     mkdir -p "$STAMP_DIR"
     printf '%s\n' "$hash" > "$stamp"
   else
-    echo "    -> !! Build failed for $label"
+    error "Build failed for $label"
     return 1
   fi
 }
@@ -112,6 +118,8 @@ build() {
 # build all the programs that need compiling
 build_all() {
   local failed=0
+
+  msg "Building programs..."
 
   build scrollstitch \
     "$ROOT_DIR/config/rofi/applets/bin/scrollstitch" \
@@ -128,6 +136,7 @@ build_all() {
 
 # backup files
 backup_all() {
+  msg "Backing up configs..."
   backup "$HOME/.config/hypr"
   backup "$HOME/.config/kitty"
   backup "$HOME/.config/nvim"
@@ -148,12 +157,12 @@ resolve_host_profile() {
 
   if [ -n "$arg" ]; then
     if [ ! -d "$ROOT_DIR/config/hosts/$arg" ]; then
-      echo "==> Unknown host profile '$arg'"
-      echo "    available: $(host_profiles)"
+      error "Unknown host profile '$arg'"
+      plain "available: $(host_profiles)" >&2
       return 1
     fi
     printf '%s\n' "$arg" >"$HOST_FILE"
-    echo "==> Host profile set to '$arg'"
+    msg "Host profile set to '$arg'"
     return 0
   fi
 
@@ -161,20 +170,20 @@ resolve_host_profile() {
   current=$(host_profile)
 
   if [ -z "$current" ]; then
-    echo "==> No host profile set for this machine."
-    echo "    Pick one and pass it once, it is remembered afterwards:"
-    echo "      ./deploy.sh deploy <profile>"
-    echo "    available: $(host_profiles)"
+    error "No host profile set for this machine"
+    plain "Pick one and pass it once, it is remembered afterwards:" >&2
+    plain "  ./deploy.sh deploy <profile>" >&2
+    plain "available: $(host_profiles)" >&2
     return 1
   fi
 
   if [ ! -d "$ROOT_DIR/config/hosts/$current" ]; then
-    echo "==> Host profile '$current' ($HOST_FILE) no longer exists"
-    echo "    available: $(host_profiles)"
+    error "Host profile '$current' ($(tilde "$HOST_FILE")) no longer exists"
+    plain "available: $(host_profiles)" >&2
     return 1
   fi
 
-  echo "==> Host profile: $current"
+  msg "Host profile: $current"
 }
 
 # Runs after deploy_all.
@@ -184,14 +193,14 @@ deploy_host() {
   profile=$(host_profile)
   local src="$ROOT_DIR/config/hosts/$profile"
 
-  echo "    -> Deploying host profile '$profile'..."
+  msg2 "host profile '$profile'"
   cp "$src/hypr-host.lua" "$HOME/.config/hypr/host.lua" &&
     cp "$src/waybar-host.jsonc" "$HOME/.config/waybar/host.jsonc" &&
     cp "$src/waybar-host.css" "$HOME/.config/waybar/host.css" &&
     cp "$src/hyprlock-host.conf" "$HOME/.config/hypr/hyprlock-host.conf" &&
     cp "$src/hypridle-host.conf" "$HOME/.config/hypr/hypridle.conf" &&
     cp "$src/mpris-popup-margin" "$HOME/.config/waybar/mpris-popup-margin" || {
-    echo "    -> !! Failed to deploy host profile '$profile'"
+    error "Failed to deploy host profile '$profile'"
     return 1
   }
 }
@@ -199,6 +208,8 @@ deploy_host() {
 # deploy files {src} {dest} [generated paths to keep, relative to dest...]
 deploy_all() {
   local failed=0
+
+  msg "Deploying files..."
 
   # keep host files so a failed deploy can't leave them deleted
   deploy "$ROOT_DIR/config/hypr" "$HOME/.config/hypr" "colors" \
@@ -225,13 +236,15 @@ deploy_all() {
 
 # Restart daemons so they pick up the deployed configs
 restart_daemons() {
+  msg "Reloading services..."
+
+  msg2 "Reloading hyprland"
   hyprctl reload >/dev/null
-  echo "    -> Restarting hyprland..."
 
   local d
   for d in hypridle waybar; do
     if pkill -x "$d"; then
-      echo "    -> Restarting $d..."
+      msg2 "Restarting $d"
       setsid -f "$d" >/dev/null 2>&1
     fi
   done
@@ -240,26 +253,25 @@ restart_daemons() {
 case "$1" in
 backup)
   backup_all
-  echo "==> Backup all the files !"
+  msg "Backup finished."
   ;;
 build)
   build_all || exit 1
-  echo "==> Build all the programs !"
+  msg "Build finished."
   ;;
 deploy)
   resolve_host_profile "$2" || exit 1
   build_all || exit 1
-  echo "==> Build all the programs !"
   deploy_all || exit 1
   deploy_host || exit 1
   restart_daemons
-  echo "==> Deploy all the files !"
+  msg "Deploy finished."
   ;;
 *)
-  echo "Usage: ./deploy.sh [deploy [profile]|backup|build]"
-  echo "    deploy  - deploy all the settings; pass a profile once to set this"
-  echo "              machine's host profile (stored in ~/.config/astroprism-host)"
-  echo "    backup - backup all your files will be replaced as .backup files"
-  echo "    build  - compile the programs whose sources changed"
+  echo "Usage: ./deploy.sh {deploy [profile]|backup|build}"
+  echo "    deploy  - build, copy the configs into place and reload;"
+  echo "              [profile] sets this machine's profile and is saved"
+  echo "    backup  - copy the configs deploy would replace to *.backup"
+  echo "    build   - compile the programs whose sources changed"
   ;;
 esac

@@ -137,11 +137,33 @@ countdown () {
 	done
 }
 
-# Block until rofi's surface is really gone,
+has_layer () {
+	hyprctl layers -j | jq -e --arg ns "$1" '[.[].levels[][] | .namespace] | index($ns)' >/dev/null 2>&1
+}
+
+# Freeze the screen before rofi/slurp take the pointer,
+# so hover states still show up in the shot.
+freeze_pid=""
+freeze_screen () {
+	hyprpicker -r -z -d -q >/dev/null 2>&1 &
+	freeze_pid=$!
+	for _ in $(seq 1 20); do
+		has_layer hyprpicker && break
+		sleep 0.05
+	done
+}
+
+unfreeze_screen () {
+	[[ -n "$freeze_pid" ]] && kill "$freeze_pid" 2>/dev/null
+	freeze_pid=""
+}
+trap unfreeze_screen EXIT
+
+# Block until rofi's layer is really gone,
 # otherwise grim catches the menu still painted on top.
 wait_for_rofi () {
 	for _ in $(seq 1 50); do
-		hyprctl clients -j | jq -e 'all(.[]; (.class // "") | test("rofi"; "i") | not)' >/dev/null 2>&1 && break
+		has_layer rofi || break
 		sleep 0.1
 	done
 	sleep 0.2
@@ -151,10 +173,12 @@ wait_for_rofi () {
 shotnow () {
 	wait_for_rofi
 	cd ${dir} && grim - | copy_shot
+	unfreeze_screen
 	notify_only
 }
 
 shot5 () {
+	unfreeze_screen
 	countdown '5'
 	sleep 1 && cd ${dir} && grim - | copy_shot
 	notify_view
@@ -171,21 +195,25 @@ shotwin () {
 		exit 0
 	fi
 	cd ${dir} && grim -g "$geom" - | copy_shot
+	unfreeze_screen
 	notify_only
 }
 
 shotarea () {
+	wait_for_rofi
 	geom=$(slurp -d)
 	if [[ -z "$geom" ]]; then
 		exit 0
 	fi
 	cd ${dir} && grim -g "$geom" - | copy_shot
+	unfreeze_screen
 	notify_only
 }
 
 # Scroll capture: press once to start recording a chosen region, press again
 # to stop and stitch the scrolled frames into a single tall screenshot.
 scrollcap () {
+	unfreeze_screen
 	mkdir -p "$scrollcap_dir"
 	if $scrollcap_active; then
 		# Already recording: stop it and stitch the result
@@ -236,6 +264,7 @@ scrollcap () {
 # Screen recording: press once to start recording a chosen region to video,
 # press again to stop and save it.
 screenrec () {
+	unfreeze_screen
 	mkdir -p "$screenrec_dir"
 	if $screenrec_active; then
 		kill -INT "$(cat "$screenrec_pid")"
@@ -285,6 +314,7 @@ run_cmd() {
 # Actions
 # Called with a --optN flag (e.g. from a keybind): run that capture directly.
 if [[ -n "$1" ]]; then
+	[[ "$1" == '--opt3' ]] && freeze_screen
 	run_cmd "$1"
 	exit 0
 fi
@@ -298,6 +328,7 @@ elif $screenrec_active; then
 	exit 0
 fi
 
+freeze_screen
 chosen="$(run_rofi)"
 case ${chosen} in
     $option_1)
