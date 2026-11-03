@@ -1,0 +1,35 @@
+/* Desktop-specific swaync sizing; the margins match hypr gaps_out.
+   Deployed to ~/.config/swaync/host.css by deploy.sh. */
+
+* {
+  font-size: 14px;
+}
+
+.control-center {
+  margin: 20px;
+}
+
+.floating-notifications .notification-row .notification-background {
+  padding: 10px 20px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .summary,
+.widget-dnd label,
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-title {
+  font-size: 14px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .body,
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .time,
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-subtitle {
+  font-size: 13px;
+}
+
+.widget-title > label {
+  font-size: 16px;
+}
+
+.widget-buttons-grid flowboxchild > button,
+.widget-volume label {
+  font-size: 20px;
+}

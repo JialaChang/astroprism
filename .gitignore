@@ -3,6 +3,7 @@
 **/waybar/colors.css
 **/kitty/colors/
 **/rofi/colors/
+**/swaync/colors-swaync.css
 config/starship.toml
 config/waybar/clock.jsonc
 config/fastfetch/big.jsonc
@@ -20,6 +21,7 @@ config/hypr/hypridle.conf
 config/waybar/host.jsonc
 config/waybar/host.css
 config/waybar/mpris-popup-margin
+config/swaync/host.css
 
 # compilation files
 target/

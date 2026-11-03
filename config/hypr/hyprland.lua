@@ -69,6 +69,7 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd([[bash -c 'sleep 1 && f=$(cat ~/.cache/last_wallpaper 2>/dev/null) && [ -f "$f" ] && awww img "$f"']])
 	hl.exec_cmd("hyprexpose")
 	hl.exec_cmd("hypridle")
+	hl.exec_cmd("~/.config/swaync/scripts/autoclose.sh")
 	-- Host-specific autostarts
 	for _, cmd in ipairs(host.autostart) do
 		hl.exec_cmd(cmd)
@@ -185,7 +186,7 @@ hl.animation({ leaf = "fadeOut", enabled = true, speed = 1.46, bezier = "almostL
 hl.animation({ leaf = "fade", enabled = true, speed = 3.03, bezier = "quick" })
 hl.animation({ leaf = "layers", enabled = true, speed = 3.81, bezier = "easeOutQuint" })
 hl.animation({ leaf = "layersIn", enabled = true, speed = 4, bezier = "easeOutQuint", style = "fade" })
-hl.animation({ leaf = "layersOut", enabled = true, speed = 1.5, bezier = "linear", style = "fade" })
+hl.animation({ leaf = "layersOut", enabled = true, speed = 3, bezier = "easeOutQuint", style = "fade" })
 hl.animation({ leaf = "fadeLayersIn", enabled = true, speed = 1.79, bezier = "almostLinear" })
 hl.animation({ leaf = "fadeLayersOut", enabled = true, speed = 1.39, bezier = "almostLinear" })
 hl.animation({ leaf = "workspaces", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
@@ -423,6 +424,14 @@ hl.layer_rule({
 	match = { namespace = "^mpris-popup$" },
 
 	animation = "slide",
+})
+
+-- swaync is pinned to the right edge, so its panel and popups slide in from there.
+hl.layer_rule({
+	name = "swaync-anim",
+	match = { namespace = "^swaync-(control-center|notification-window)$" },
+
+	animation = "slide right",
 })
 
 -- Hyprland-run windowrule

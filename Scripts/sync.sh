@@ -63,6 +63,7 @@ sync_dir ~/.config/matugen "$ROOT_DIR/config/matugen" || failed=1
 sync_dir ~/.config/rofi "$ROOT_DIR/config/rofi" || failed=1
 sync_dir ~/.config/uwsm "$ROOT_DIR/config/uwsm" || failed=1
 sync_dir ~/.config/fastfetch "$ROOT_DIR/config/fastfetch" || failed=1
+sync_dir ~/.config/swaync "$ROOT_DIR/config/swaync" 'host.css' || failed=1
 
 sync_file ~/.bashrc "$ROOT_DIR/bashrc" || failed=1
 sync_file ~/.zshrc "$ROOT_DIR/zshrc" || failed=1

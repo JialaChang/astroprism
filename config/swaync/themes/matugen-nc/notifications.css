@@ -1,0 +1,139 @@
+/***
+ *    ┳┓┏┓┏┳┓┳┏┓┳┏┓┏┓┏┳┓┳┏┓┳┓
+ *    ┃┃┃┃ ┃ ┃┣ ┃┃ ┣┫ ┃ ┃┃┃┃┃
+ *    ┛┗┗┛ ┻ ┻┻ ┻┗┛┛┗ ┻ ┻┗┛┛┗
+ *
+ */
+
+/* Same surfaces and accents as the waybar tabs and the mpris popup. */
+:root {
+  --cc-bg: alpha(@surface_container, 0.97);
+  --noti-border-color: alpha(@outline_variant, 0.6);
+  --noti-bg-darker: @surface_container_low;
+  --noti-bg-hover: alpha(@on_surface, 0.08);
+  --noti-bg-focus: alpha(@on_surface, 0.06);
+  --noti-close-bg: alpha(@on_surface, 0.08);
+  --noti-close-bg-hover: alpha(@primary, 0.25);
+  --text-color: @on_surface;
+  --text-color-disabled: @outline;
+  --bg-selected: @primary;
+  --border-radius: 18px;
+  --notification-icon-size: 48px;
+  --notification-shadow: none;
+  --mpris-album-art-shadow: none;
+}
+
+* {
+  font-family: "JetBrains Nerd Font", "Iosevka Nerd Font";
+}
+
+/* Card: rounded all round like the mpris popup. */
+.notification-row .notification-background .notification {
+  background: alpha(@surface_container, 0.97);
+  border: 1px solid var(--noti-border-color);
+}
+
+/* Keyboard focus already shows on the card; skip the grey block around groups. */
+.notification-group:focus {
+  background: transparent;
+}
+
+/* Hover washes down from the accent, matching the bar modules. */
+.notification-row .notification-background .notification .notification-default-action:hover {
+  background-color: transparent;
+  background-image: linear-gradient(to bottom,
+    alpha(@primary, 0.20),
+    alpha(@primary, 0.10) 40%,
+    alpha(@primary, 0) 75%);
+}
+
+.notification-row .notification-background .notification.critical .notification-default-action:hover {
+  background-image: linear-gradient(to bottom,
+    alpha(@error, 0.20),
+    alpha(@error, 0.10) 40%,
+    alpha(@error, 0) 75%);
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .summary {
+  color: @on_surface;
+}
+
+.notification-row .notification-background .notification.critical .notification-default-action .notification-content .text-box .summary {
+  color: @error;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .time {
+  color: @on_surface_variant;
+  font-weight: normal;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .body {
+  color: @on_surface_variant;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .app-icon {
+  -gtk-icon-shadow: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .body-image {
+  background-color: transparent;
+  border-radius: 12px;
+}
+
+.notification-row .notification-background .notification .notification-action > button {
+  background: alpha(@primary, 0.15);
+  color: @primary;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+.notification-row .notification-background .notification .notification-action > button:hover {
+  background: alpha(@primary, 0.30);
+}
+
+.notification-row .notification-background .notification .notification-action > button:active {
+  background: @primary;
+  color: @on_primary;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-button {
+  background: alpha(@primary, 0.15);
+  color: @primary;
+  border: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-button:hover {
+  background: alpha(@primary, 0.30);
+}
+
+.close-button {
+  color: @on_surface_variant;
+}
+
+.close-button:hover {
+  color: @primary;
+}
+
+.notification-row .notification-background .notification progressbar trough {
+  background: @surface_container_highest;
+  border: none;
+  border-radius: 999px;
+  min-height: 4px;
+}
+
+.notification-row .notification-background .notification progressbar progress {
+  background: @primary;
+  border: none;
+  border-radius: 999px;
+  min-height: 4px;
+}
+
+.notification-group.collapsed .notification-row .notification {
+  background-color: @surface_container_high;
+}
+
+.notification-group .notification-group-headers .notification-group-header {
+  color: @on_surface;
+  font-weight: bold;
+}

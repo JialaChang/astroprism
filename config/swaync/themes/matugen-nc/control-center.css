@@ -1,0 +1,160 @@
+/***
+ *    ┏┓┏┓┳┓┏┳┓┳┓┏┓┓   ┏┓┏┓┳┓┏┳┓┏┓┳┓
+ *    ┃ ┃┃┃┃ ┃ ┣┫┃┃┃ ━━┃ ┣ ┃┃ ┃ ┣ ┣┫
+ *    ┗┛┗┛┛┗ ┻ ┛┗┗┛┗┛  ┗┛┗┛┛┗ ┻ ┗┛┛┗
+ *
+ */
+
+/* Widgets take the bar's grouping: title @secondary, toggles @tertiary,
+   media and volume @primary. */
+
+.control-center {
+  background: var(--cc-bg);
+  border: 1px solid var(--noti-border-color);
+  border-radius: 18px;
+}
+
+/* One step up from the panel so cards stand out. */
+.control-center .control-center-list .notification-row .notification-background .notification {
+  background: @surface_container_high;
+}
+
+.control-center .control-center-list-placeholder {
+  color: @on_surface_variant;
+}
+
+.widget-title > label {
+  color: @secondary;
+  font-weight: bold;
+}
+
+.widget-title > button {
+  background: alpha(@secondary, 0.15);
+  color: @secondary;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+  padding: 2px 12px;
+}
+
+.widget-title > button:hover {
+  background: alpha(@secondary, 0.30);
+}
+
+.widget-dnd label {
+  color: @on_surface;
+  font-weight: bold;
+}
+
+.widget-dnd switch {
+  background: @surface_container_highest;
+  border: none;
+  box-shadow: none;
+}
+
+.widget-dnd switch:checked {
+  background: @tertiary;
+}
+
+.widget-dnd switch slider {
+  background: @on_surface_variant;
+  border: none;
+  box-shadow: none;
+}
+
+.widget-dnd switch:checked slider {
+  background: @on_tertiary;
+}
+
+.widget-buttons-grid {
+  background: @surface_container_high;
+}
+
+.widget-buttons-grid flowboxchild > button {
+  background: transparent;
+  color: @on_surface_variant;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+.widget-buttons-grid flowboxchild > button:hover {
+  background: alpha(@tertiary, 0.15);
+  color: @tertiary;
+}
+
+.widget-buttons-grid flowboxchild > button.toggle:checked,
+.widget-buttons-grid flowboxchild > button.active {
+  background: alpha(@tertiary, 0.25);
+  color: @tertiary;
+}
+
+.widget-volume {
+  background: @surface_container_high;
+}
+
+.widget-volume label {
+  color: @primary;
+}
+
+.widget-volume button {
+  background: transparent;
+  color: @on_surface_variant;
+  border: none;
+  box-shadow: none;
+}
+
+scale trough {
+  background: @surface_container_highest;
+  border: none;
+  border-radius: 999px;
+  min-height: 6px;
+}
+
+scale highlight {
+  background: @primary;
+  border: none;
+  border-radius: 999px;
+}
+
+scale slider {
+  background: @primary;
+  border: none;
+  box-shadow: none;
+  border-radius: 999px;
+  min-width: 14px;
+  min-height: 14px;
+  margin: -4px;
+}
+
+.widget-mpris .widget-mpris-player {
+  border: 1px solid var(--noti-border-color);
+  border-radius: 18px;
+}
+
+/* Darkened art blur so the text keeps contrast on any cover. */
+.widget-mpris .widget-mpris-player .mpris-overlay {
+  background-color: alpha(@surface_container_lowest, 0.6);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-title {
+  color: @primary;
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-subtitle {
+  color: @on_surface_variant;
+}
+
+.widget-mpris button {
+  background: transparent;
+  color: @on_surface;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay button:hover,
+.widget-mpris .widget-mpris-player .mpris-overlay > box > button:hover {
+  background: alpha(@on_surface, 0.1);
+  color: @primary;
+}

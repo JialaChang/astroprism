@@ -146,6 +146,7 @@ backup_all() {
   backup "$HOME/.config/rofi"
   backup "$HOME/.config/uwsm"
   backup "$HOME/.config/fastfetch"
+  backup "$HOME/.config/swaync"
 
   backup "$HOME/.bashrc"
   backup "$HOME/.zshrc"
@@ -200,7 +201,8 @@ deploy_host() {
     cp "$src/waybar-host.css" "$HOME/.config/waybar/host.css" &&
     cp "$src/hyprlock-host.conf" "$HOME/.config/hypr/hyprlock-host.conf" &&
     cp "$src/hypridle-host.conf" "$HOME/.config/hypr/hypridle.conf" &&
-    cp "$src/mpris-popup-margin" "$HOME/.config/waybar/mpris-popup-margin" || {
+    cp "$src/mpris-popup-margin" "$HOME/.config/waybar/mpris-popup-margin" &&
+    cp "$src/swaync-host.css" "$HOME/.config/swaync/host.css" || {
     error "Failed to deploy host profile '$profile'"
     return 1
   }
@@ -223,6 +225,7 @@ deploy_all() {
   deploy "$ROOT_DIR/config/rofi" "$HOME/.config/rofi" "colors" || failed=1
   deploy "$ROOT_DIR/config/uwsm" "$HOME/.config/uwsm" "gpu-mode" || failed=1
   deploy "$ROOT_DIR/config/fastfetch" "$HOME/.config/fastfetch" "big.jsonc" "small.jsonc" || failed=1
+  deploy "$ROOT_DIR/config/swaync" "$HOME/.config/swaync" "colors-swaync.css" "host.css" || failed=1
 
   deploy "$ROOT_DIR/local/bin/wallset" "$HOME/.local/bin/wallset" || failed=1
   deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend" || failed=1
@@ -251,6 +254,11 @@ restart_daemons() {
       setsid -f "$d" >/dev/null 2>&1
     fi
   done
+
+  if pgrep -x swaync >/dev/null; then
+    msg2 "Reloading swaync"
+    swaync-client -R -rs >/dev/null
+  fi
 }
 
 case "$1" in
