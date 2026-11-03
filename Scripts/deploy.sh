@@ -53,7 +53,8 @@ deploy() {
     }
   elif [ -f "$src" ]; then
     msg2 "$(tilde "$dest")"
-    mkdir -p "$(dirname "$dest")" && cp "$src" "$dest" || {
+    # unlink first so a running binary doesn't fail with "Text file busy"
+    mkdir -p "$(dirname "$dest")" && cp --remove-destination "$src" "$dest" || {
       error "Failed to deploy $(tilde "$dest")"
       return 1
     }
@@ -122,13 +123,13 @@ build_all() {
   msg "Building programs..."
 
   build scrollstitch \
-    "$ROOT_DIR/config/rofi/applets/bin/scrollstitch" \
-    "$ROOT_DIR/config/rofi/applets/bin/scrollstitch/scrollstitch" \
+    "$ROOT_DIR/programs/scrollstitch" \
+    "$ROOT_DIR/programs/scrollstitch/scrollstitch" \
     go build -o scrollstitch . || failed=1
 
   build mpris-popup \
-    "$ROOT_DIR/config/waybar/scripts/mpris-popup" \
-    "$ROOT_DIR/config/waybar/scripts/mpris-popup/mpris-popup" \
+    "$ROOT_DIR/programs/mpris-popup" \
+    "$ROOT_DIR/programs/mpris-popup/mpris-popup" \
     bash -c 'cargo build --release && cp target/release/mpris-popup mpris-popup' || failed=1
 
   return $failed
@@ -227,6 +228,8 @@ deploy_all() {
   deploy "$ROOT_DIR/local/bin/wallset-backend" "$HOME/.local/bin/wallset-backend" || failed=1
   deploy "$ROOT_DIR/local/bin/prime-run" "$HOME/.local/bin/prime-run" || failed=1
   deploy "$ROOT_DIR/local/bin/gpu-mode" "$HOME/.local/bin/gpu-mode" || failed=1
+  deploy "$ROOT_DIR/programs/mpris-popup/mpris-popup" "$HOME/.local/bin/mpris-popup" || failed=1
+  deploy "$ROOT_DIR/programs/scrollstitch/scrollstitch" "$HOME/.local/bin/scrollstitch" || failed=1
 
   deploy "$ROOT_DIR/bashrc" "$HOME/.bashrc" || failed=1
   deploy "$ROOT_DIR/zshrc" "$HOME/.zshrc" || failed=1

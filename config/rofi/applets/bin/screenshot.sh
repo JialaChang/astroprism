@@ -31,7 +31,7 @@ runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
 scrollcap_dir="$runtime_dir/rofi-scrollcap"
 scrollcap_pid="$scrollcap_dir/pid"
 scrollcap_video="$scrollcap_dir/capture.mp4"
-scrollstitch_bin="$(dirname "$(readlink -f "$0")")/scrollstitch/scrollstitch"
+scrollstitch_bin="$HOME/.local/bin/scrollstitch"
 scrollcap_active=false
 if [[ -f "$scrollcap_pid" ]] && kill -0 "$(cat "$scrollcap_pid")" 2>/dev/null; then
 	scrollcap_active=true
@@ -224,8 +224,9 @@ scrollcap () {
 		rm -f "$scrollcap_pid"
 
 		if [[ ! -x "$scrollstitch_bin" ]]; then
-			dunstify -u low --replace=700 "Building scrollstitch..."
-			(cd "$(dirname "$scrollstitch_bin")" && go build -o scrollstitch .)
+			dunstify -u critical --replace=700 "scrollstitch not installed" "Run deploy.sh deploy"
+			rm -rf "$scrollcap_dir"
+			exit 1
 		fi
 
 		dunstify -u low --replace=700 "Stitching scroll capture..."

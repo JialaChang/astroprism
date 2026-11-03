@@ -23,8 +23,8 @@ config/waybar/mpris-popup-margin
 
 # compilation files
 target/
-**/scrollstitch/scrollstitch
-**/mpris-popup/mpris-popup
+programs/scrollstitch/scrollstitch
+programs/mpris-popup/mpris-popup
 
 # settings
 .vscode/

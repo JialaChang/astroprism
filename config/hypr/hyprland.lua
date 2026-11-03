@@ -417,7 +417,7 @@ hl.window_rule({
 
 -- waybar's mpris popup hangs off the bar, so slide it in and out of the top
 -- edge rather than using the global fade. The namespace is set by the popup
--- itself (LAYER_NAMESPACE in waybar/scripts/mpris-popup/src/ui.rs).
+-- itself (LAYER_NAMESPACE in programs/mpris-popup/src/ui.rs).
 hl.layer_rule({
 	name = "mpris-popup-anim",
 	match = { namespace = "^mpris-popup$" },
