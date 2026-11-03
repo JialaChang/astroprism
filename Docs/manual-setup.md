@@ -1,17 +1,15 @@
 # Manual setup
 
-`Scripts/deploy.sh` only writes under `$HOME`. Everything below lives in `/etc`,
-needs root, and is **not** restored by a deploy — redo it by hand on a fresh
-install or a new machine.
-
-Both are laptop-specific (ASUS Vivobook K6500ZC: Intel Iris Xe + RTX 3050).
-Skip them on a desktop or a single-GPU machine.
+`Scripts/deploy.sh` only writes under `$HOME`. These two live in `/etc`, need
+root, and no deploy restores them — redo them on a fresh install. Both apply to
+the laptop only: one needs a battery, the other a hybrid Intel + NVIDIA setup.
 
 ## 1. Battery charge limit
 
 Capping the charge at 80% is the biggest thing you can do for the cell's
-lifespan. The units are in `system/`; they default the limit to 80% and let
-the wheel group change it, which the waybar battery click (80% ↔ 100%) needs.
+lifespan. The units are in `system/`: they default the limit to 80% and hand the
+sysfs file to the `wheel` group, which is what the waybar battery click
+(80% ↔ 100%) needs.
 
 ```sh
 sudo cp system/udev/90-charge-limit.rules /etc/udev/rules.d/
@@ -21,11 +19,20 @@ sudo udevadm trigger --action=add -s power_supply
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold   # -> 80
 ```
 
+The rule starts the service per battery rather than writing the value itself,
+because vendor drivers add the threshold attribute after the battery's `add`
+event, so the service waits for it to appear. The firmware also resets the cap
+on resume, so `charge-limit.sh restore` writes the saved value back from the
+laptop profile's `autostart` and hypridle's `after_sleep_cmd`.
+
+Some models only accept 60/80/100. Write the value by hand first and read it
+back.
+
 ## 2. Keep Xorg off the dGPU
 
 SDDM's greeter runs an X server that autoconfigures onto the NVIDIA card and
-then keeps holding it for the whole session, which alone stops the dGPU from
-ever reaching runtime D3.
+holds it for the whole session, which alone stops the dGPU from ever reaching
+runtime D3.
 
 `/etc/X11/xorg.conf.d/20-intel-primary.conf`:
 
@@ -41,29 +48,13 @@ Section "Device"
 EndSection
 ```
 
-`AutoAddGPU off` is the load-bearing half — without it X still attaches the
-NVIDIA card as a secondary GPU screen even though the primary device is pinned
-to the iGPU. `BusID` is **decimal**, so check `lspci` and convert if the iGPU is
-not at `00:02.0`.
+`AutoAddGPU off` is the load-bearing half — without it X attaches the NVIDIA card
+as a secondary GPU screen even with the primary device pinned to the iGPU.
+`BusID` is **decimal**, so check `lspci` and convert if the iGPU is not at
+`00:02.0`.
 
-Verify after a reboot — the Processes block should be empty:
+Reboot and check that `nvidia-smi` shows an empty Processes block. If the greeter
+does not come up, drop to a TTY (Ctrl+Alt+F2) and delete the file.
 
-```sh
-nvidia-smi
-```
-
-If the greeter fails to come up, drop to a TTY (Ctrl+Alt+F2) and delete the
-file.
-
-## The rest is in the repo
-
-The userspace half of the GPU work is deployed normally and needs no root:
-
-- `config/uwsm/env-hyprland` — points the compositor at the iGPU and hides the
-  NVIDIA EGL vendor and Vulkan ICD, so nothing loads the driver just by probing
-- `local/bin/gpu-mode` — `igpu` (default) / `hybrid`, takes effect on re-login
-- `local/bin/prime-run` — hands the NVIDIA libraries back to one app
-- `config/waybar/scripts/gpu.sh` — reads `runtime_status` from sysfs before
-  calling `nvidia-smi`, because querying a sleeping GPU wakes it
-
-Idle draw with all of it in place: ~9.6 W, against ~15 W with the dGPU awake.
+The userspace half of the GPU work needs no root and is deployed normally — see
+[architecture.md](architecture.md).
