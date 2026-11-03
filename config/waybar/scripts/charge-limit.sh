@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 # Toggle the battery's max charge between 80% and 100%.
 # Needs the sysfs file writable by wheel: system/udev/90-charge-limit.rules
 
-SYSFS="/sys/class/power_supply/BAT0/charge_control_end_threshold"
+SYSFS=$(ls /sys/class/power_supply/*/charge_control_end_threshold 2>/dev/null | head -n1)
 STATE_FILE="$HOME/.cache/charge_limit"
 
 [ -w "$SYSFS" ] || {
-    [ "$1" = "restore" ] || notify-send "Charge Limit" "$SYSFS is not writable"
+    [ "${1:-}" = "restore" ] || notify-send "Charge Limit" "$SYSFS is not writable"
     exit 1
 }
 

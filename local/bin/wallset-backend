@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
-FILE=$1
-PREFER_ARG=$2
+FILE=${1:-}
+PREFER_ARG=${2:-}
 
 if [ ! -f "$FILE" ]; then
   notify-send "Can not find wallpaper files..."

@@ -249,6 +249,7 @@ hl.config({
 		disable_hyprland_logo = false, -- If true disables the random hyprland logo / anime girl background. :(
 		-- Without this a dead hyprlock leaves an unrecoverable lock no new client can take over.
 		allow_session_lock_restore = true,
+		middle_click_paste = false, -- no primary-selection paste on middle click
 	},
 })
 

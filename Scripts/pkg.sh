@@ -1,4 +1,5 @@
 #!/bin/bash
+set -uo pipefail
 
 pacman_succ=0
 pacman_fail=0
@@ -104,7 +105,7 @@ install_packages() {
   fi
 }
 
-case "$1" in
+case "${1:-}" in
 export)
   export_packages
   ;;

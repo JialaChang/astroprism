@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 ## Author  : Aditya Shakya (adi1090x)
 ## Github  : @adi1090x
@@ -19,6 +20,9 @@ if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'typ
 elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
   list_col='6'
   list_row='1'
+else
+  list_col='1'
+  list_row='6'
 fi
 
 # Options
@@ -89,9 +93,12 @@ confirm_exit() {
 
 # Confirm and execute
 confirm_run() {
+  local cmd
   selected="$(confirm_exit)"
   if [[ "$selected" == "$yes" ]]; then
-    ${1}; ${2}; ${3}
+    for cmd in "$@"; do
+      $cmd
+    done
   else
     exit
   fi

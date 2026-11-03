@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 ## Author  : Aditya Shakya (adi1090x)
 ## Github  : @adi1090x
@@ -14,7 +15,7 @@ source "$HOME"/.config/rofi/applets/shared/theme.bash
 theme="$type/$style"
 
 prompt='Screenshot'
-dir="$HOME/Pictures/Screenshot"
+dir="$HOME/Pictures/Screenshots"
 mesg="DIR: $dir"
 
 if [[ ( "$theme" == *'type-1'* ) || ( "$theme" == *'type-3'* ) || ( "$theme" == *'type-5'* ) ]]; then
@@ -23,6 +24,9 @@ if [[ ( "$theme" == *'type-1'* ) || ( "$theme" == *'type-3'* ) || ( "$theme" == 
 elif [[ ( "$theme" == *'type-2'* ) || ( "$theme" == *'type-4'* ) ]]; then
 	list_col='6'
 	list_row='1'
+else
+	list_col='1'
+	list_row='6'
 fi
 
 # Toggle state, checked up front so the menu labels below can reflect it.
@@ -40,7 +44,7 @@ fi
 screenrec_dir="$runtime_dir/rofi-screenrec"
 screenrec_pid="$screenrec_dir/pid"
 screenrec_video="$screenrec_dir/capture.mp4"
-screenrec_out_dir="$HOME/Videos/Screenrecord"
+screenrec_out_dir="$HOME/Videos/Screencasts"
 screenrec_active=false
 if [[ -f "$screenrec_pid" ]] && kill -0 "$(cat "$screenrec_pid")" 2>/dev/null; then
 	screenrec_active=true
@@ -105,10 +109,11 @@ fi
 notify_only() {
 	notify_cmd_shot='dunstify -u low --replace=699'
 	# ${notify_cmd_shot} "Copied to clipboard."
-	if [[ -e "$dir/$file" ]]; then
+	if [[ -s "$dir/$file" ]]; then
 		${notify_cmd_shot} "Screenshot Saved."
 	else
 		${notify_cmd_shot} "Screenshot Deleted."
+		rm -f "$dir/$file"
 	fi
 }
 
@@ -116,10 +121,12 @@ notify_only() {
 notify_view() {
 	notify_cmd_shot='dunstify -u low --replace=699'
 	# ${notify_cmd_shot} "Copied to clipboard."
-	if [[ -e "$dir/$file" ]]; then
+	if [[ -s "$dir/$file" ]]; then
 		${notify_cmd_shot} "Screenshot Saved."
 	else
 		${notify_cmd_shot} "Screenshot Deleted."
+		rm -f "$dir/$file"
+		return
 	fi
 	imv "$dir/$file"
 }
@@ -232,7 +239,12 @@ scrollcap () {
 		dunstify -u low --replace=700 "Stitching scroll capture..."
 
 		read -r vw vh < <(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$scrollcap_video" | tr 'x' ' ')
-		
+		if [[ -z "${vw:-}" || -z "${vh:-}" ]]; then
+			dunstify -u critical --replace=700 "Scroll capture failed" "Cannot read the recording's size"
+			rm -rf "$scrollcap_dir"
+			exit 1
+		fi
+
 		# The stitcher reports on stderr which frames it used and which it threw away.
 		# left alone: running this from a terminal shows it,
 		# a keybind launch has nowhere to show it and drops it.
@@ -244,12 +256,13 @@ scrollcap () {
 
 		rm -rf "$scrollcap_dir"
 
-		if [[ -e "$dir/$file" ]]; then
+		if [[ -s "$dir/$file" ]]; then
 			wl-copy --type image/png < "$dir/$file"
 			dunstify -u low --replace=700 "Scroll capture saved and copied to clipboard."
 			imv "$dir/$file"
 		else
 			dunstify -u low --replace=700 "Scroll capture failed."
+			rm -f "$dir/$file"
 		fi
 	else
 		geom=$(slurp -d)
@@ -314,7 +327,7 @@ run_cmd() {
 
 # Actions
 # Called with a --optN flag (e.g. from a keybind): run that capture directly.
-if [[ -n "$1" ]]; then
+if [[ -n "${1:-}" ]]; then
 	[[ "$1" == '--opt3' ]] && freeze_screen
 	run_cmd "$1"
 	exit 0

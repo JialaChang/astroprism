@@ -1,4 +1,5 @@
 #!/bin/bash
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -67,11 +68,6 @@ deploy() {
 # source_hash {srcdir} {output binary}
 source_hash() {
   local srcdir=$1 out=$2
-
-  # Without pipefail a broken find or grep is masked by cut's exit status,
-  # and every source dir hashes to the same constant. local - scopes it.
-  local -
-  set -o pipefail
 
   # Anything that must not affect the hash goes in the -prune list below.
   find "$srcdir" -type d \( -name target -o -name .git -o -name node_modules \) -prune -o -type f -print0 |
@@ -261,7 +257,7 @@ restart_daemons() {
   fi
 }
 
-case "$1" in
+case "${1:-}" in
 backup)
   backup_all
   msg "Backup finished."
@@ -271,7 +267,7 @@ build)
   msg "Build finished."
   ;;
 deploy)
-  resolve_host_profile "$2" || exit 1
+  resolve_host_profile "${2:-}" || exit 1
   build_all || exit 1
   deploy_all || exit 1
   deploy_host || exit 1

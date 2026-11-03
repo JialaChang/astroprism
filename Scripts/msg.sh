@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # color only on a terminal, checked per stream; NO_COLOR turns it off
+M_GREEN= M_BLUE= M_BOLD= M_OFF=
+E_YELLOW= E_RED= E_BOLD= E_OFF=
 if [ -z "${NO_COLOR:-}" ] && [ -t 1 ]; then
   M_GREEN=$'\e[1;32m' M_BLUE=$'\e[1;34m' M_BOLD=$'\e[1m' M_OFF=$'\e[0m'
 fi

@@ -7,40 +7,19 @@ install or a new machine.
 Both are laptop-specific (ASUS Vivobook K6500ZC: Intel Iris Xe + RTX 3050).
 Skip them on a desktop or a single-GPU machine.
 
-## 1. Battery charge threshold
+## 1. Battery charge limit
 
-Charging to 100% and sitting on AC ages the cell. Capping at 80% is the single
-biggest thing you can do for its lifespan.
-
-`/etc/systemd/system/battery-charge-threshold.service`:
-
-```ini
-[Unit]
-Description=Set battery charge threshold to 80%
-After=multi-user.target
-StartLimitBurst=0
-
-[Service]
-Type=oneshot
-Restart=on-failure
-RestartSec=1
-ExecStart=/bin/bash -c 'echo 80 > /sys/class/power_supply/BAT0/charge_control_end_threshold'
-
-[Install]
-WantedBy=multi-user.target suspend.target hibernate.target
-```
+Capping the charge at 80% is the biggest thing you can do for the cell's
+lifespan. The units are in `system/`; they default the limit to 80% and let
+the wheel group change it, which the waybar battery click (80% ↔ 100%) needs.
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now battery-charge-threshold.service
+sudo cp system/udev/90-charge-limit.rules /etc/udev/rules.d/
+sudo cp system/systemd/charge-limit@.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo udevadm control --reload
+sudo udevadm trigger --action=add -s power_supply
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold   # -> 80
 ```
-
-`suspend.target hibernate.target` in `WantedBy` is not optional: ASUS firmware
-resets the cap to 100 on resume, so the unit has to run again each time.
-
-Some models only accept 60/80/100. Write the value by hand first and read it
-back before wiring up the unit.
 
 ## 2. Keep Xorg off the dGPU
 

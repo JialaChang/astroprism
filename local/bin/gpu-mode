@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 # Switch which GPU Hyprland renders on. The mode is only read at session
 # startup by ~/.config/uwsm/env-hyprland, so a change needs a re-login.

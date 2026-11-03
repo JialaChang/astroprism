@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -uo pipefail
 
 # Reading runtime_status from sysfs does not wake the GPU, but nvidia-smi does.
 # Poll the cheap file first and report a sleeping dGPU without ever pulling it
