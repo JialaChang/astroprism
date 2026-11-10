@@ -194,8 +194,7 @@ hl.animation({ leaf = "workspacesIn", enabled = true, speed = 1.21, bezier = "al
 hl.animation({ leaf = "workspacesOut", enabled = true, speed = 1.94, bezier = "almostLinear", style = "fade" })
 hl.animation({ leaf = "zoomFactor", enabled = true, speed = 7, bezier = "quick" })
 
--- Keep workspaces 1-5 alive so waybar's ext/workspaces module always shows them
--- (that module has no persistent-workspaces option of its own).
+-- Keep 1-5 alive for waybar's ext/workspaces (it has no persistent option)
 for i = 1, 5 do
 	hl.workspace_rule({ workspace = tostring(i), persistent = true })
 end
@@ -418,9 +417,7 @@ hl.window_rule({
 -- })
 -- overlayLayerRule:set_enabled(false)
 
--- waybar's mpris popup hangs off the bar, so slide it in and out of the top
--- edge rather than using the global fade. The namespace is set by the popup
--- itself (LAYER_NAMESPACE in programs/mpris-popup/src/ui.rs).
+-- mpris popup slides from the top; namespace set in mpris-popup ui.rs
 hl.layer_rule({
 	name = "mpris-popup-anim",
 	match = { namespace = "^mpris-popup$" },
@@ -428,7 +425,7 @@ hl.layer_rule({
 	animation = "slide",
 })
 
--- swaync is pinned to the right edge, so its panel and popups slide in from there.
+-- swaync slides in from the right edge
 hl.layer_rule({
 	name = "swaync-anim",
 	match = { namespace = "^swaync-(control-center|notification-window)$" },

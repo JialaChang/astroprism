@@ -1,5 +1,4 @@
-/* Laptop-specific waybar sizing.
-   Deployed to ~/.config/waybar/host.css by deploy.sh. */
+/* Laptop waybar sizing. */
 
 * {
   font-size: 12px;

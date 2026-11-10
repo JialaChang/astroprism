@@ -14,8 +14,7 @@ now_ms() {
   echo $((t / 1000))
 }
 
-# The layer spans the whole monitor; the panel is the right-hand column inset by gaps_out.
-# panel_rect {width} {gap} -> "x1 y1 x2 y2", fails once the panel is closed
+# panel_rect {width} {gap} -> "x1 y1 x2 y2" of the right column; fails once closed
 panel_rect() {
   local width=$1 gap=$2
 

@@ -1,5 +1,4 @@
-/* Laptop-specific swaync sizing; the margins match hypr gaps_out.
-   Deployed to ~/.config/swaync/host.css by deploy.sh. */
+/* Laptop swaync sizing; margins match hypr gaps_out. */
 
 * {
   font-size: 12px;

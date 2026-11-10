@@ -1,8 +1,6 @@
 // Author: JialaChang
 
-// scrollstitch stitches a sequence of screen-capture frames (extracted from a
-// scrolling recording) into a single tall PNG by detecting the vertical
-// overlap between consecutive frames.
+// scrollstitch stitches scroll-recording frames into one tall PNG by matching their vertical overlap.
 
 package main
 
@@ -22,10 +20,7 @@ const (
 	minShift     = 4
 	maxShiftFrac = 0.8
 
-	// Max acceptable mean squared row-profile error.
-	// Measured on real captures, frames that genuinely scrolled score
-	// under 30 while bogus matches start around 70, so this threshold
-	// sits in the gap with roughly a 2x margin on either side.
+	// Max mean squared profile error; real scrolls score < 30, bogus matches > 70.
 	errThreshold = 50.0
 )
 
@@ -55,8 +50,7 @@ func readFrame(r io.Reader, width, height int) (*image.RGBA, error) {
 	}, nil
 }
 
-// rowProfile computes two per-row 1D signatures used to find the vertical shift between frames:
-// the average Rec. 709 luminance, and the horizontal total variation
+// rowProfile computes per-row mean luma and horizontal total variation.
 func rowProfile(img *image.RGBA) frameProfile {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
@@ -92,9 +86,7 @@ const (
 	ratioMax    = 0.8 // max acceptable ratio (best / second-best)
 )
 
-// bestOffsetExcluding scans candidate offsets and returns the one with the lowest mean squared profile error.
-// Offsets within excludeRadius rows of excludeCenter are skipped;
-// pass excludeCenter = -1 to scan every candidate.
+// bestOffsetExcluding returns the lowest-error offset, skipping excludeRadius around excludeCenter (-1 = none).
 func bestOffsetExcluding(prev, curr frameProfile, excludeCenter, excludeRadius int) (offset int, score float64) {
 	h := len(prev.mean)
 	maxShift := int(float64(h) * maxShiftFrac)
@@ -133,10 +125,8 @@ func bestOffsetExcluding(prev, curr frameProfile, excludeCenter, excludeRadius i
 	return bestOffset, bestErr
 }
 
-// findOffset searches for the shift where prev[offset:] best matches curr[:len-offset],
-// i.e. how far the content scrolled between the two frames.
-// It reports ok=false when a distinct runner-up scores nearly as well,
-// which means the content is self-similar and the winning offset carries no real evidence.
+// findOffset finds how far content scrolled from prev to curr.
+// ok=false when a distinct runner-up scores nearly as well (self-similar content).
 func findOffset(prev, curr frameProfile) (offset int, score float64, ok bool) {
 	bestOffset, bestErr := bestOffsetExcluding(prev, curr, -1, 0)
 	if bestErr == math.MaxFloat64 {
@@ -157,17 +147,11 @@ const (
 	verifyColStep   = 16
 	verifyThreshold = 12.0 // max mean abs green diff in the overlap region
 
-	// Below this threshold the two frames are the same picture.
-	// Measured on real captures, a repeated frame scores under 0.5
-	// while anything that actually scrolled scores above 3,
-	// so this threshold sits in an empty gap: even one scrolled
-	// row displaces every glyph, there is no middle ground to land in.
+	// Same picture below this; repeats score < 0.5, real scrolls > 3.
 	staticThreshold = 1.0
 )
 
-// frameChanged reports whether anything moved at all between two frames.
-// A repeated frame carries no new content, but the offset search still finds a
-// plausible-looking match up near its ceiling.
+// frameChanged reports whether anything moved; repeats would still match near the ceiling.
 func frameChanged(prev, curr *image.RGBA) bool {
 	w := prev.Bounds().Dx()
 	h := prev.Bounds().Dy()
@@ -183,9 +167,7 @@ func frameChanged(prev, curr *image.RGBA) bool {
 	return float64(sum)/float64(count) > staticThreshold
 }
 
-// verifyOffset double-checks a candidate offset against real pixels:
-// 1D profiles can collide on self-similar content, but actual
-// 2D pixels at a wrong offset almost never agree.
+// verifyOffset checks an offset against pixels, since 1D profiles can collide.
 func verifyOffset(prev, curr *image.RGBA, offset int) bool {
 	w := prev.Bounds().Dx()
 	h := prev.Bounds().Dy()
@@ -229,9 +211,7 @@ func rowsUnchanged(prev, curr *image.RGBA) []bool {
 	return same
 }
 
-// detectBand finds the fixed header and footer: rows that stayed put across the scrolled pairs.
-// Overestimating is harmless (the extra rows are content that shows up in other frames),
-// so blank rows that happen to match only cost search range; a band under half the frame is distrusted.
+// detectBand finds the fixed header/footer rows. Overestimating is harmless; a band under half the frame is distrusted.
 func detectBand(frames []*image.RGBA) band {
 	h := frames[0].Bounds().Dy()
 	full := band{0, h}
@@ -309,9 +289,7 @@ func (s stitchStats) report(out io.Writer, width, height int) {
 	}
 }
 
-// stitch consumes raw RGBA frames and returns the assembled image. A frame that
-// cannot be placed is skipped rather than guessed at, so the result is always
-// made of content the matcher was confident about.
+// stitch assembles raw RGBA frames; frames that can't be placed are skipped, never guessed.
 func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 	var st stitchStats
 
@@ -370,8 +348,7 @@ func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 			break
 		}
 		if err != nil {
-			// Keep whatever was already stitched; a half-written frame at the
-			// end is far more likely than a corrupt stream.
+			// Keep what's stitched; likely a half-written last frame.
 			st.truncated = err
 			break
 		}
@@ -417,7 +394,7 @@ func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 		prevProfile = currProfile
 		prevFrame = curr
 	}
-	// The rest of the last placed frame, footer included: the only one that lines up with the final piece.
+	// Rest of the last placed frame, footer included.
 	pieces = append(pieces, cropRows(prevFrame, cut, height))
 	totalHeight += height - cut
 

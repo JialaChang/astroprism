@@ -11,9 +11,7 @@ pub(crate) const DBUS_PROPERTIES_IFACE: &str = "org.freedesktop.DBus.Properties"
 pub(crate) const MPRIS_PLAYER_IFACE: &str = "org.mpris.MediaPlayer2.Player";
 const MPRIS_BUS_PREFIX: &str = "org.mpris.MediaPlayer2.";
 
-/// Everything a refresh needs, in one playerctl call instead of one per field.
-/// Fields are separated by an ASCII unit separator,
-/// which playerctl passes through and metadata never contains.
+/// Everything a refresh needs in one playerctl call, fields split by ASCII unit separator.
 pub(crate) const METADATA_FORMAT: &str = concat!(
     "{{playerName}}\u{1f}",
     "{{title}}\u{1f}",
@@ -55,8 +53,7 @@ fn player_pid(player_name: &str) -> Option<u32> {
     };
 
     let names: Vec<String> = call("ListNames", None)?.child_value(0).get()?;
-    // playerctl reports the base name ("firefox") while the bus name carries an
-    // instance suffix ("…firefox.instance_1_96"), so match on both forms.
+    // Bus name may carry an instance suffix ("firefox.instance_1_96").
     let wanted = format!("{MPRIS_BUS_PREFIX}{player_name}");
     let instance_prefix = format!("{wanted}.");
     let bus_name = names
@@ -68,8 +65,7 @@ fn player_pid(player_name: &str) -> Option<u32> {
         .get()
 }
 
-/// Focus the window belonging to the given MPRIS player, matched by the bus
-/// name's process ID and dispatched through Hyprland.
+/// Focus the player's window via its bus PID and Hyprland.
 pub(crate) fn focus_player_window(player_name: &str) -> bool {
     let Some(pid) = player_pid(player_name) else {
         return false;

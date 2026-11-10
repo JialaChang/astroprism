@@ -26,9 +26,7 @@ status() {
     state="$(cat "$dgpu/power/runtime_status" 2>/dev/null || echo unknown)"
     echo "dGPU        : $state"
 
-    # nvidia-smi wakes the GPU to answer, so asking while it sleeps both
-    # destroys what we came to measure and reports a garbage wattage read
-    # during the power-up transition.
+    # nvidia-smi would wake the GPU and misread its power.
     if [ "$state" = suspended ]; then
       echo "dGPU draw   : not queried, that would wake it"
     elif command -v nvidia-smi > /dev/null; then

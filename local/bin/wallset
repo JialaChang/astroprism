@@ -38,9 +38,7 @@ if [ -n "$chosen" ]; then
         echo -en "$name\0icon\x1f$swatch\n" >"$swatch_dir/$name.entry"
     }
 
-    # Run the 6 matugen dry-runs in parallel instead of one after another,
-    # each writes its own .entry file (NUL bytes survive file I/O,
-    # unlike a $(...) var), then they're cat'd back together in a fixed order.
+    # 6 dry-runs in parallel, each to its own file (keeps NUL bytes, $(...) wouldn't).
     strategies=(darkness lightness saturation less-saturation value)
     swatch_for "$current_prefer" "keep-current" &
     for p in "${strategies[@]}"; do
@@ -56,8 +54,7 @@ if [ -n "$chosen" ]; then
         done
     } >"$prefer_menu_file"
 
-    # Override the fullscreen grid theme down to one rounded,
-    # centered row of 6, with the inputbar swapped for a centered -mesg title.
+    # One centered row of 6, -mesg title instead of the inputbar.
     prefer_chosen=$(rofi -dmenu -mesg "Color Preference" \
         -theme-str "window {fullscreen: false; width: 900px; height: 270px; border-radius: 30px; background-color: @surface-container-lowest-75;}" \
         -theme-str "mainbox {padding: 20px 40px; spacing: 20px; children: [\"message\", \"listview\"];}" \

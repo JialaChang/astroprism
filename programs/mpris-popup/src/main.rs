@@ -1,15 +1,7 @@
 // Author: JialaChang
 
 // Floating GTK popup for waybar's mpris module.
-//
-// Shows the player name, cover art, title/artist, a seek bar and prev/play-pause/next
-// controls. Clicking the player name focuses that app's own window.
-//
-// State comes from playerctl; playback commands go back out the same way.
-// Updates are signal-driven rather than polled: PropertiesChanged from playerctld,
-// plus Seeked for the position MPRIS never notifies on. The only timers are the
-// seek bar's per-second advance and the idle timeout that closes the popup.
-// Remote cover art is fetched off the main thread.
+// State via playerctl, updates from D-Bus signals rather than polling.
 
 mod art;
 mod mpris;
@@ -17,7 +9,6 @@ mod ui;
 
 use gtk::prelude::*;
 
-/// Signal Termination of linux
 const SIGTERM: i32 = 15;
 
 fn expand_home(path: &str) -> String {
@@ -30,8 +21,7 @@ fn expand_home(path: &str) -> String {
     }
 }
 
-/// Per-user runtime dir rather than shared `/tmp`,
-/// so another local user can't plant a symlink at a predictable path.
+/// Per-user runtime dir, not /tmp, so no one can plant a symlink there.
 fn pidfile_path() -> String {
     std::env::var("XDG_RUNTIME_DIR")
         .map(|dir| format!("{dir}/waybar-mpris-popup.pid"))

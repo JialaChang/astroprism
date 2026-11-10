@@ -184,8 +184,7 @@ resolve_host_profile() {
   msg "Host profile: $current"
 }
 
-# Runs after deploy_all.
-# Copies files in host to config, a failed copy fails the deploy.
+# Runs after deploy_all; any failed copy fails the deploy.
 deploy_host() {
   local profile
   profile=$(host_profile)

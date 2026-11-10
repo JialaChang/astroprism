@@ -22,8 +22,7 @@ done
 # Its frame lingers, so give the compositor time to redraw or grim catches it.
 [ "$from_rofi" = true ] && sleep 0.2
 
-# Own shot, since hyprlock's `screenshot` would capture the lock on a relock.
-# Runtime dir (0700), not /tmp: it shows whatever was on screen.
+# Own shot (hyprlock's would capture the lock on relock), private runtime dir.
 shot=${XDG_RUNTIME_DIR:-/tmp}/hyprlock-bg.png
 if [ "$reuse_shot" = false ]; then
   # Timeout: a capture that stalls across suspend would leave the machine unlocked.

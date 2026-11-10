@@ -20,7 +20,6 @@ else
   prefer=$([ -f "$PREFER_FILE" ] && cat "$PREFER_FILE" || echo "saturation")
 fi
 
-# Change wallpaper
 awww img "$FILE" \
   --transition-type any \
   --transition-duration 1.4 \

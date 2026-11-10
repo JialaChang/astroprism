@@ -54,8 +54,7 @@ failed=0
 
 msg "Syncing configs..."
 
-# host.* are deploy_host output; the tracked copies live in config/hosts/<profile>/, 
-# syncing them back would overwrite the template so exclude.
+# host.* is deploy output; syncing it back would overwrite config/hosts/ templates.
 sync_dir ~/.config/hypr "$ROOT_DIR/config/hypr" 'host.lua' 'hyprlock-host.conf' 'hypridle.conf' || failed=1
 sync_dir ~/.config/kitty "$ROOT_DIR/config/kitty" || failed=1
 sync_dir ~/.config/nvim "$ROOT_DIR/config/nvim" || failed=1

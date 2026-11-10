@@ -7,15 +7,11 @@ import (
 	"testing"
 )
 
-// Every test here builds a tall master image, slides a viewport down it, and
-// feeds the resulting frames back in. The master is the ground truth: a correct
-// stitch reproduces it exactly, so most assertions are pixel comparisons rather
-// than tolerances.
+// Tests slide a viewport down a master image; a correct stitch reproduces it exactly.
 
 // --- masters ---------------------------------------------------------------
 
-// randomMaster is the easy case: every row is unique, so the shift is never in doubt.
-// It proves nothing subtle, but a failure here means something basic broke.
+// randomMaster: every row unique, the easy baseline.
 func randomMaster(w, h int, seed int64) *image.RGBA {
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
 	rng := rand.New(rand.NewSource(seed))
@@ -28,9 +24,7 @@ func randomMaster(w, h int, seed int64) *image.RGBA {
 	return m
 }
 
-// cardsMaster renders a list of evenly spaced cards. With unique=false every
-// card is pixel-identical, which makes the vertical shift genuinely unrecoverable;
-// with unique=true each card carries its own "text", the way a real feed does.
+// cardsMaster: evenly spaced cards, identical (unrecoverable) unless unique.
 func cardsMaster(w, h int, unique bool) *image.RGBA {
 	const period = 150
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
@@ -63,9 +57,7 @@ func cardsMaster(w, h int, unique bool) *image.RGBA {
 	return m
 }
 
-// textureMaster gives every row the same number of dark and light pixels, so
-// the per-row mean is constant down the whole image. Rows differ only in how
-// finely they alternate, which is exactly what the edge profile measures.
+// textureMaster: constant row mean, rows differ only in edge density.
 func textureMaster(w, h int, seed int64) *image.RGBA {
 	periods := []int{2, 4, 8, 10, 16, 20, 32, 40, 64, 80} // all divide 320
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
@@ -84,10 +76,7 @@ func textureMaster(w, h int, seed int64) *image.RGBA {
 	return m
 }
 
-// pageMaster has flat chrome along the top and bottom with content in between,
-// the shape of nearly every scrollable window. It matters because it makes the
-// top of a frame resemble the bottom of the same frame, which is what lets a
-// large bogus offset line up.
+// pageMaster: flat top/bottom margins around content, which invites large bogus offsets.
 func pageMaster(w, h, margin int, seed int64) *image.RGBA {
 	m := image.NewRGBA(image.Rect(0, 0, w, h))
 	rng := rand.New(rand.NewSource(seed))
@@ -115,10 +104,7 @@ func uniformTops(n, step int) []int {
 	return tops
 }
 
-// framesFrom emits one raw RGBA frame per entry in tops, in the same byte layout
-// ffmpeg pipes into the stitcher. Noise imitates the compression jitter of a real
-// recording and is applied per frame, so repeating a position yields frames that
-// differ slightly rather than identical ones; noise=0 when the test compares pixels.
+// framesFrom emits raw RGBA frames like ffmpeg; noise mimics compression jitter per frame.
 func framesFrom(m *image.RGBA, frameH int, tops []int, noise int, seed int64) []byte {
 	w := m.Bounds().Dx()
 	rng := rand.New(rand.NewSource(seed))
@@ -146,8 +132,7 @@ func framesFrom(m *image.RGBA, frameH int, tops []int, noise int, seed int64) []
 	return out
 }
 
-// withFixedBars paints the same header and footer over every frame, the way a
-// sticky navbar and bottom bar sit on top of a scrolling page.
+// withFixedBars paints a sticky header and footer over every frame.
 func withFixedBars(raw []byte, w, frameH int, header, footer *image.RGBA) []byte {
 	frameSize := w * frameH * 4
 	hh, fh := header.Bounds().Dy(), footer.Bounds().Dy()
@@ -170,8 +155,7 @@ func run(t *testing.T, raw []byte, w, frameH int) (*image.RGBA, stitchStats) {
 	return img, st
 }
 
-// wantMaster asserts the stitch reproduced rows 0..h of the master exactly.
-// It compares row by row so a failure names where the seam went wrong.
+// wantMaster asserts rows 0..h match the master exactly, row by row.
 func wantMaster(t *testing.T, got, master *image.RGBA, wantH int) {
 	t.Helper()
 	if h := got.Bounds().Dy(); h != wantH {
@@ -200,8 +184,7 @@ func TestUniformScroll(t *testing.T) {
 	}
 }
 
-// Real scrolling is not steady: a wheel tick accelerates and settles, so the
-// shift varies frame to frame. The largest step here sits just under the ceiling.
+// Uneven shifts per frame, the largest just under the ceiling.
 func TestJitteredScroll(t *testing.T) {
 	const w, frameH = 320, 240
 	rng := rand.New(rand.NewSource(3))
@@ -232,8 +215,7 @@ func TestRepeatingCardsSurviveNoise(t *testing.T) {
 	}
 }
 
-// Content whose brightness never varies can still be matched on texture alone.
-// This is the only test that fails if the edge profile stops working.
+// Matching on texture alone; the only test covering the edge profile.
 func TestTextureOnlyContent(t *testing.T) {
 	const w, frameH, n, step = 320, 240, 25, 60
 	tops := uniformTops(n, step)
@@ -242,9 +224,7 @@ func TestTextureOnlyContent(t *testing.T) {
 	wantMaster(t, got, master, tops[n-1]+frameH)
 }
 
-// The counterpart to TestNoisyStillFramesAreRefused: the same page shape, this
-// time actually scrolling. Without it, a matcher that refuses everything would
-// still look correct.
+// Counterpart to TestNoisyStillFramesAreRefused, actually scrolling.
 func TestPageWithFlatMarginsScrolls(t *testing.T) {
 	const w, frameH, n, step, margin = 320, 240, 25, 60, 30
 	tops := uniformTops(n, step)
@@ -256,8 +236,7 @@ func TestPageWithFlatMarginsScrolls(t *testing.T) {
 	}
 }
 
-// A sticky header and footer must appear once, at the ends, with the page
-// scrolling continuously between them instead of a footer stamped on every piece.
+// Sticky header and footer appear once, at the ends.
 func TestFixedHeaderAndFooter(t *testing.T) {
 	const w, frameH, n, step, hh, fh = 320, 240, 25, 40, 40, 30
 	tops := uniformTops(n, step)
@@ -279,10 +258,7 @@ func TestFixedHeaderAndFooter(t *testing.T) {
 	wantMaster(t, got, want, wantH)
 }
 
-// A recording opens on a coarse keyframe that the encoder only sharpens a frame
-// later, so the fixed bars in frame 0 differ from every later copy of themselves.
-// One dissenting pair must not hide them: this is what stamped the footer onto
-// every piece of a real capture.
+// A coarse first keyframe must not hide the fixed bars.
 func TestFixedBarsSurviveCoarseFirstFrame(t *testing.T) {
 	const w, frameH, n, step, hh, fh = 320, 240, 25, 40, 40, 30
 	tops := uniformTops(n, step)
@@ -319,9 +295,7 @@ func TestFixedBarsSurviveCoarseFirstFrame(t *testing.T) {
 	}
 }
 
-// Blank space at the top of a page can sit still across every warmup pair and
-// get read as a header. That costs search range, never content: those rows are
-// still the first frame's top, and the result must match the page exactly.
+// Blank top rows read as a header must not change the result.
 func TestBlankTopMisreadAsHeaderIsHarmless(t *testing.T) {
 	const w, frameH, n, step, margin = 320, 240, 30, 10, 120
 	tops := uniformTops(n, step)
@@ -335,10 +309,7 @@ func TestBlankTopMisreadAsHeaderIsHarmless(t *testing.T) {
 
 // --- content that must be refused ------------------------------------------
 
-// Identical cards on a flat background make several offsets pixel-equivalent.
-// The information needed to choose between them is simply not in the frames, so
-// the only correct answer is to refuse: a guess here is what produces the
-// duplicated bands that motivated the ratio test.
+// Identical cards make several offsets equivalent, so all must be refused.
 func TestIdenticalCardsAreRefused(t *testing.T) {
 	const w, frameH, n, step = 320, 480, 30, 90
 	tops := uniformTops(n, step)
@@ -349,13 +320,7 @@ func TestIdenticalCardsAreRefused(t *testing.T) {
 	}
 }
 
-// Frames that differ only by capture noise are not repeats, so frameChanged
-// lets them through, yet they hold no new content. The search still returns a
-// best offset for them, and on a page with flat chrome it lands near the top of
-// the range: there the overlap is thin enough to fall entirely inside the
-// margins, where the two frames genuinely do agree. Raising maxShiftFrac to 0.9
-// makes the whole overlap fit inside a 30 px margin and every one of these
-// frames gets accepted, inflating the result without adding a pixel of content.
+// Noise-only frames pass frameChanged but must not match inside the flat margins.
 func TestNoisyStillFramesAreRefused(t *testing.T) {
 	const w, frameH, n, margin = 320, 240, 25, 30
 	master := pageMaster(w, frameH, margin, 21)
@@ -368,8 +333,7 @@ func TestNoisyStillFramesAreRefused(t *testing.T) {
 	}
 }
 
-// A shift larger than the search ceiling cannot be recovered. The stitch must
-// drop that frame and say so, never invent a plausible-looking offset.
+// A shift past the ceiling is dropped and reported, never guessed.
 func TestScrollBeyondCeilingIsReported(t *testing.T) {
 	const w, frameH = 320, 240
 	tops := []int{0, 60, 120, 350, 410} // the 230 px jump exceeds 0.8*240
@@ -385,10 +349,7 @@ func TestScrollBeyondCeilingIsReported(t *testing.T) {
 
 // --- invariants ------------------------------------------------------------
 
-// The same scroll sampled at different rates must yield the same image. This is
-// the strongest check available without ground truth, and it is what exposed
-// repeated frames being accepted at the search ceiling: the height grew with
-// the sampling rate instead of staying put.
+// Different sampling rates of the same scroll yield the same image.
 func TestSamplingRateDoesNotChangeResult(t *testing.T) {
 	const w, frameH, maxTop, fine = 320, 300, 1600, 8
 	master := randomMaster(w, maxTop+frameH, 13)
@@ -409,8 +370,7 @@ func TestSamplingRateDoesNotChangeResult(t *testing.T) {
 	}
 }
 
-// Frames repeat whenever the recording outruns the redraw. They carry no new
-// content, and accepting even one inflates the result.
+// Repeated frames must be skipped.
 func TestRepeatedFramesAreIgnored(t *testing.T) {
 	const w, frameH, dup = 320, 240, 20
 	tops := []int{0, 50, 100, 150, 200}

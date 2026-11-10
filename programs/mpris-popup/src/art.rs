@@ -12,8 +12,7 @@ pub(crate) const ART_SIZE: i32 = 84;
 /// Corner rounding of the cover art, in pixels
 const ART_RADIUS: f64 = 12.0;
 
-/// Cache sentinel for "no cover on screen"; never equal to a real art URL,
-/// including the empty one, so the next refresh always tries again.
+/// "No cover" sentinel; matches no URL, so the next refresh retries.
 pub(crate) const ART_URL_NONE: &str = "\u{0}";
 
 /// Scale+crop to fill a size x size square without distorting aspect ratio.
@@ -31,8 +30,7 @@ fn scale_cover(pixbuf: &Pixbuf, size: i32) -> Option<Pixbuf> {
     Some(scaled.new_subpixbuf(x, y, size, size))
 }
 
-/// Round off the cover art's corners. GTK3 can't clip a GtkImage's pixbuf with
-/// CSS, so the rounding has to be painted into the pixbuf itself.
+/// Round the corners in the pixbuf itself; GTK3 CSS can't clip a GtkImage.
 fn round_pixbuf(pixbuf: &Pixbuf, radius: f64) -> Option<Pixbuf> {
     use gdk::cairo::{Context, Format, ImageSurface};
     use gdk::prelude::GdkContextExt;
@@ -74,8 +72,7 @@ pub(crate) fn youtube_thumbnail_url(page_url: &str) -> String {
     }
 }
 
-/// Cover URLs come from the player, so the response is untrusted: bound how long
-/// a fetch can hang and how much of it is held in memory.
+/// Cover URLs are untrusted: bound fetch time and size.
 const ART_FETCH_TIMEOUT: Duration = Duration::from_secs(10);
 const ART_MAX_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -127,8 +124,7 @@ pub(crate) fn set_art(widgets: &Widgets, shared: &Shared, url: &str) {
     shared.art_url.replace(url.to_string());
 
     if url.starts_with("http://") || url.starts_with("https://") {
-        // Fetch remote covers on a thread and paint them when the bytes come back;
-        // the old cover stays up in the meantime.
+        // Fetch on a thread; the old cover stays up meanwhile.
         let tx = shared.art_tx.clone();
         let url = url.to_string();
         std::thread::spawn(move || {
@@ -155,8 +151,7 @@ pub(crate) fn apply_art(widgets: &Widgets, shared: &Shared, url: &str, pixbuf: O
         Some(p) => widgets.art.set_from_pixbuf(Some(&p)),
         None => {
             widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
-            // Only cache the miss when there was nothing to load in the first place,
-            // so a failed download is retried on the next refresh.
+            // Don't cache a failed download, so it retries next refresh.
             if !url.is_empty() {
                 shared.art_url.replace(ART_URL_NONE.to_string());
             }

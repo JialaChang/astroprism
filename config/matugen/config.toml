@@ -28,8 +28,7 @@ input_path = '~/.config/matugen/templates/hyprland-colors.lua'
 output_path = '~/.config/hypr/colors/colors.lua'
 post_hook = 'hyprctl reload'
 
-# No post_hook needed: hyprlock reads its config at launch, so the next lock
-# picks these up.
+# No post_hook: hyprlock reads its config at launch.
 [templates.hyprlock]
 input_path = '~/.config/matugen/templates/hyprlock-colors.conf'
 output_path = '~/.config/hypr/colors/hyprlock.conf'
@@ -54,8 +53,7 @@ input_path = '~/.config/matugen/templates/waybar-clock.jsonc'
 output_path = '~/.config/waybar/clock.jsonc'
 
 
-# Whole file generated, not just colors -- hyprexpose takes a single TOML with
-# no includes, and reads it once at startup, hence the restart hook.
+# Whole file: hyprexpose has no includes and reads it once, hence the restart.
 [templates.hyprexpose]
 input_path = '~/.config/matugen/templates/hyprexpose-colors.toml'
 output_path = '~/.config/hyprexpose/config.toml'

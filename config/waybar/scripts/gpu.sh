@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Reading runtime_status from sysfs does not wake the GPU, but nvidia-smi does.
-# Poll the cheap file first and report a sleeping dGPU without ever pulling it
-# out of runtime D3 -- at a 10s interval this module alone otherwise costs the
-# ~4.5W the dGPU draws whenever it is awake.
+# Check sysfs first: nvidia-smi wakes a sleeping dGPU (~4.5W).
 
 card=$(grep -l 0x10de /sys/class/drm/card[0-9]*/device/vendor 2>/dev/null | head -1)
 if [ -n "$card" ] && [ "$(cat "$(dirname "$card")/power/runtime_status" 2>/dev/null)" = suspended ]; then

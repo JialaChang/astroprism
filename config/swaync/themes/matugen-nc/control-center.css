@@ -5,8 +5,7 @@
  *
  */
 
-/* Widgets take the bar's grouping: title @secondary, toggles @tertiary,
-   media and volume @primary. */
+/* Title @secondary, toggles @tertiary, media and volume @primary. */
 
 .control-center {
   background: var(--cc-bg);

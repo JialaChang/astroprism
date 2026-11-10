@@ -4,8 +4,7 @@
         "format": "{:%H:%M}  ",
         "tooltip-format": "<tt>{calendar}</tt>",
         "calendar": {
-            // Starts on the single-month view
-            // on-click-right toggles to the full year grid
+            // right-click toggles month/year
             "mode": "month",
             "mode-mon-col": 3,
             "weeks-pos": "right",

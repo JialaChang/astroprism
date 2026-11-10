@@ -1,6 +1,5 @@
 {
     // Laptop-specific waybar layout
-    // Deployed to ~/.config/waybar/host.jsonc by deploy.sh
     //
     // Available: custom/nix clock mpris network bluetooth hyprland/window
     //            group/workspaces-bar backlight pulseaudio cava

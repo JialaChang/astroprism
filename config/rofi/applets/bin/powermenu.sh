@@ -14,10 +14,7 @@ theme="$type/$style"
 prompt="$(hostnamectl hostname)"
 mesg="Uptime : $(uptime -p | sed -e 's/up //g')"
 
-if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
-  list_col='1'
-  list_row='6'
-elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
+if [[ "$theme" == *'type-2'* ]]; then
   list_col='6'
   list_row='1'
 else
@@ -49,8 +46,7 @@ fi
 
 # Rofi CMD
 rofi_cmd() {
-  # Left/Right step between entries and wrap around; in this single-row
-  # layout it is rofi's row-up/row-down that move horizontally.
+  # Single row: Left/Right map to row-up/down, wrapping.
   rofi -kb-move-char-back '' \
     -kb-move-char-forward '' \
     -kb-row-up 'Up,Left,Control+p' \

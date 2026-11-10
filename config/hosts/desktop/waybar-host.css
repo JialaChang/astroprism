@@ -1,5 +1,4 @@
-/* Desktop-specific waybar sizing.
-   Deployed to ~/.config/waybar/host.css by deploy.sh. */
+/* Desktop waybar sizing. */
 
 * {
   font-size: 14px;

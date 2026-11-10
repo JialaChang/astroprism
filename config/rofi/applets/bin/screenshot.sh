@@ -18,10 +18,7 @@ prompt='Screenshot'
 dir="$HOME/Pictures/Screenshots"
 mesg="DIR: $dir"
 
-if [[ ( "$theme" == *'type-1'* ) || ( "$theme" == *'type-3'* ) || ( "$theme" == *'type-5'* ) ]]; then
-	list_col='1'
-	list_row='6'
-elif [[ ( "$theme" == *'type-2'* ) || ( "$theme" == *'type-4'* ) ]]; then
+if [[ "$theme" == *'type-2'* ]]; then
 	list_col='6'
 	list_row='1'
 else
@@ -29,7 +26,7 @@ else
 	list_row='6'
 fi
 
-# Toggle state, checked up front so the menu labels below can reflect it.
+# Recording state, read first so the menu labels can reflect it.
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
 
 scrollcap_dir="$runtime_dir/rofi-scrollcap"
@@ -50,14 +47,10 @@ if [[ -f "$screenrec_pid" ]] && kill -0 "$(cat "$screenrec_pid")" 2>/dev/null; t
 	screenrec_active=true
 fi
 
-# Geometry of the window focused when this script started.
-# The rofi menu takes focus itself, so has to use this rather
-# than whatever is active by the time an option is picked.
+# Window focused at launch; rofi takes focus once open.
 initial_win_geom=$(hyprctl activewindow -j | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end')
 
-# Options
-# Only ever shown when nothing is recording,
-# a running capture stops without the menu.
+# Options (only shown when nothing is recording)
 layout=`cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2`
 if [[ "$layout" == 'NO' ]]; then
 	option_1="󰹑 Capture Desktop"
@@ -77,8 +70,7 @@ fi
 
 # Rofi CMD
 rofi_cmd() {
-	# Left/Right step between entries and wrap around; in this single-row
-	# layout it is rofi's row-up/row-down that move horizontally.
+	# Single row: Left/Right map to row-up/down, wrapping.
 	rofi -kb-move-char-back '' \
 		-kb-move-char-forward '' \
 		-kb-row-up 'Up,Left,Control+p' \
@@ -108,7 +100,6 @@ fi
 # notify only, no viewer popup
 notify_only() {
 	notify_cmd_shot='dunstify -u low --replace=699'
-	# ${notify_cmd_shot} "Copied to clipboard."
 	if [[ -s "$dir/$file" ]]; then
 		${notify_cmd_shot} "Screenshot Saved."
 	else
@@ -120,7 +111,6 @@ notify_only() {
 # notify and open the screenshot in a viewer
 notify_view() {
 	notify_cmd_shot='dunstify -u low --replace=699'
-	# ${notify_cmd_shot} "Copied to clipboard."
 	if [[ -s "$dir/$file" ]]; then
 		${notify_cmd_shot} "Screenshot Saved."
 	else
@@ -148,8 +138,7 @@ has_layer () {
 	hyprctl layers -j | jq -e --arg ns "$1" '[.[].levels[][] | .namespace] | index($ns)' >/dev/null 2>&1
 }
 
-# Freeze the screen before rofi/slurp take the pointer,
-# so hover states still show up in the shot.
+# Freeze before rofi/slurp grab the pointer, keeping hover states in the shot.
 freeze_pid=""
 freeze_screen () {
 	hyprpicker -r -z -d -q >/dev/null 2>&1 &
@@ -166,8 +155,7 @@ unfreeze_screen () {
 }
 trap unfreeze_screen EXIT
 
-# Block until rofi's layer is really gone,
-# otherwise grim catches the menu still painted on top.
+# Wait for rofi's layer to go, or grim catches the menu.
 wait_for_rofi () {
 	for _ in $(seq 1 50); do
 		has_layer rofi || break
@@ -217,8 +205,7 @@ shotarea () {
 	notify_only
 }
 
-# Scroll capture: press once to start recording a chosen region, press again
-# to stop and stitch the scrolled frames into a single tall screenshot.
+# Scroll capture: 1st press records a region, 2nd stops and stitches it.
 scrollcap () {
 	unfreeze_screen
 	mkdir -p "$scrollcap_dir"
@@ -245,14 +232,9 @@ scrollcap () {
 			exit 1
 		fi
 
-		# The stitcher reports on stderr which frames it used and which it threw away.
-		# left alone: running this from a terminal shows it,
-		# a keybind launch has nowhere to show it and drops it.
+		# stitcher logs kept/dropped frames to stderr
 		cd ${dir} && ffmpeg -y -loglevel error -i "$scrollcap_video" -vf fps=15 -pix_fmt rgba -f rawvideo - \
 			| "$scrollstitch_bin" "$vw" "$vh" "$file"
-
-		# DEBUG: keep the source recording next to its stitch.
-		# mv "$scrollcap_video" "$dir/${time}_source.mp4" 2>/dev/null
 
 		rm -rf "$scrollcap_dir"
 
@@ -275,8 +257,7 @@ scrollcap () {
 	fi
 }
 
-# Screen recording: press once to start recording a chosen region to video,
-# press again to stop and save it.
+# Screen recording: 1st press records a region, 2nd stops and saves it.
 screenrec () {
 	unfreeze_screen
 	mkdir -p "$screenrec_dir"
@@ -333,7 +314,7 @@ if [[ -n "${1:-}" ]]; then
 	exit 0
 fi
 
-# A capture is already running, so stop request and skip the menu entirely.
+# A capture is running: stop it, no menu.
 if $scrollcap_active; then
 	scrollcap
 	exit 0

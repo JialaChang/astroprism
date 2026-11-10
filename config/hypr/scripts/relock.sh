@@ -16,8 +16,7 @@ for _ in {1..20}; do
 done
 pidof -q hyprlock && pkill -9 -x hyprlock
 
-# Detached: lock.sh lives until unlock. Retried only once the last one is gone,
-# so a slow start can't spawn a second hyprlock; no lock at all is the worst case.
+# Detached (lock.sh lives until unlock); retry only after the last one exits.
 for _ in {1..5}; do
   setsid ~/.config/hypr/scripts/lock.sh --reuse-shot >/dev/null 2>&1 &
   pid=$!

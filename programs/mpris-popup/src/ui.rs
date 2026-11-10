@@ -1,5 +1,4 @@
-// The popup window: widget tree, D-Bus subscriptions, and the refresh that
-// keeps them in sync with the active player.
+// Popup window: widgets, D-Bus subscriptions and refresh.
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -22,15 +21,13 @@ const POPUP_HEIGHT: i32 = 120;
 const POPUP_TOP_MARGIN: i32 = 10;
 /// Fallback screen-left offset, used when the host file below is missing
 const POPUP_LEFT_MARGIN_DEFAULT: i32 = 275;
-/// Per-machine screen-left offset of the mpris module:
-/// deploy.sh writes this from config/hosts/<profile>/mpris-popup-margin
+/// Per-machine left offset, from config/hosts/<profile>/mpris-popup-margin
 const POPUP_LEFT_MARGIN_PATH: &str = "~/.config/waybar/mpris-popup-margin";
 
 /// Wayland layer-surface namespace; what compositor layer rules match on
 const LAYER_NAMESPACE: &str = "mpris-popup";
 
-/// Read the per-host left margin, falling back to the default if the file is
-/// missing or unparseable.
+/// Per-host left margin, or the default if missing or unparseable.
 fn popup_left_margin() -> i32 {
     std::fs::read_to_string(crate::expand_home(POPUP_LEFT_MARGIN_PATH))
         .ok()
@@ -76,8 +73,7 @@ pub(crate) struct Shared {
     playing: Rc<Cell<bool>>,
     position: Rc<Cell<f64>>,
     length: Rc<Cell<f64>>,
-    /// Art URL the popup is currently showing or fetching, so a refresh doesn't
-    /// re-fetch the same cover and a late download can tell if it is still wanted.
+    /// Cover being shown or fetched; skips re-fetches and stale downloads.
     pub(crate) art_url: Rc<RefCell<String>>,
     /// Downloaded cover bytes on their way back to the main thread.
     pub(crate) art_tx: glib::Sender<(String, Vec<u8>)>,
@@ -96,14 +92,12 @@ fn set_cursor(window: &gtk::Window, name: Option<&str>) {
     gdk_window.set_cursor(cursor.as_ref());
 }
 
-/// Whether a leave event means the pointer really left the popup, rather than
-/// just moving onto one of its own children.
+/// True when the pointer left the popup, not just moved onto a child.
 fn is_pointer_exit(ev: &gdk::EventCrossing) -> bool {
     ev.detail() != gdk::NotifyType::Inferior
 }
 
-/// "{player icon}  {PLAYER NAME}", mirroring how the bar module labels itself.
-/// Also records the player so clicking the label can find its window.
+/// "{player icon}  {PLAYER NAME}", like the bar module; also records the player.
 fn set_status_label(widgets: &Widgets, shared: &Shared, player_name: &str) {
     shared.player_name.replace(player_name.to_string());
     // Drop any instance suffix ("firefox.instance_1_88" -> "firefox")
@@ -185,8 +179,7 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     set_playpause_icon(widgets, is_playing);
 
     let art_url = if art_url.is_empty() {
-        // Firefox doesn't expose mpris:artUrl for YouTube;
-        // derive a thumbnail from the page URL instead.
+        // Firefox gives no artUrl for YouTube; derive it from the page URL.
         art::youtube_thumbnail_url(page_url)
     } else {
         art_url.to_string()
@@ -211,8 +204,7 @@ fn refresh(widgets: &Widgets, shared: &Shared) {
     widgets.dur_label.set_text(&fmt_time(length));
 }
 
-/// Collapse a burst of signals into one refresh; a track change otherwise fires
-/// several PropertiesChanged within milliseconds, each forking two playerctls.
+/// Collapse a burst of signals (e.g. a track change) into one refresh.
 fn queue_refresh(widgets: &Widgets, shared: &Shared) {
     if shared.refresh_queued.replace(true) {
         return;
@@ -249,8 +241,7 @@ fn subscribe_dbus(widgets: Widgets, shared: Shared) {
         );
     }
     {
-        // Seeks arrive as Seeked on the player interface,
-        // never as a PropertiesChanged on Position.
+        // Seeks come as Seeked, never as PropertiesChanged on Position.
         let widgets = widgets.clone();
         let shared = shared.clone();
         conn.signal_subscribe(
@@ -300,8 +291,7 @@ pub(crate) fn build_window() -> gtk::Window {
     window.set_size_request(POPUP_WIDTH, POPUP_HEIGHT);
     window.style_context().add_class("mpris-popup");
 
-    // An RGBA visual, so the CSS background's alpha and the area outside the
-    // rounded corners render as transparent.
+    // RGBA visual so alpha and rounded corners render transparent.
     if let Some(screen) = WidgetExt::screen(&window) {
         if let Some(visual) = screen.rgba_visual() {
             window.set_visual(Some(&visual));
@@ -334,8 +324,7 @@ pub(crate) fn build_window() -> gtk::Window {
     status_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
     status_label.set_width_chars(15);
 
-    // A button for the hover and click handling; the CSS strips its chrome so
-    // it still reads as a label.
+    // Button for hover/click; CSS makes it look like a label.
     let player_btn = gtk::Button::new();
     player_btn.set_relief(gtk::ReliefStyle::None);
     player_btn.set_halign(gtk::Align::Start);
@@ -410,9 +399,7 @@ pub(crate) fn build_window() -> gtk::Window {
         playpause_btn: playpause_btn.clone(),
         next_btn: next_btn.clone(),
     };
-    // Deprecated in favour of async channels, which would mean pulling in
-    // async-channel and a futures executor for one message type; revisit when
-    // this moves to glib 0.19+, where the old API is gone.
+    // Deprecated, but async channels need extra crates; revisit at glib 0.19+.
     #[allow(deprecated)]
     let (art_tx, art_rx) = glib::MainContext::channel::<(String, Vec<u8>)>(glib::Priority::DEFAULT);
     let shared = Shared {
@@ -472,8 +459,7 @@ pub(crate) fn build_window() -> gtk::Window {
         let widgets = widgets.clone();
         let shared = shared.clone();
         playpause_btn.connect_clicked(move |_| {
-            // Flip the icon first so the click feels instant; the PlaybackStatus
-            // signal that follows confirms the player's real state.
+            // Flip now so it feels instant; PlaybackStatus confirms later.
             let is_playing = !shared.playing.get();
             shared.playing.set(is_playing);
             set_playpause_icon(&widgets, is_playing);
@@ -490,9 +476,7 @@ pub(crate) fn build_window() -> gtk::Window {
         let widgets_seek = widgets.clone();
         let shared_seek = shared.clone();
         widgets.seek_scale.connect_change_value(move |_, _, value| {
-            // Keep the local position in step with the drag, or the per-second
-            // tick counts on from the pre-seek value and pulls the handle back.
-            // Players that report no length leave the range open-ended.
+            // Track the drag, or the per-second tick pulls the handle back.
             let length = shared_seek.length.get();
             let value = if length > 0.0 { value.clamp(0.0, length) } else { value.max(0.0) };
             shared_seek.position.set(value);
@@ -531,8 +515,7 @@ pub(crate) fn build_window() -> gtk::Window {
         });
     }
 
-    // Local per-second tick to advance the seek bar between D-Bus events;
-    // MPRIS has no per-second position signal.
+    // Per-second tick; MPRIS has no position signal.
     {
         let widgets = widgets.clone();
         let shared = shared.clone();

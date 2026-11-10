@@ -52,9 +52,7 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 bindkey '^X^E' edit-command-line
 
-# Fastfetch
-# small preview on every new terminal, skipped once at Hyprland
-# startup where hyprland.lua already ran the big one and set this.
+# Fastfetch (skipped at Hyprland startup, which runs the big one)
 if [[ -z "$FASTFETCH_SKIP" ]]; then
   clear && fastfetch -c ~/.config/fastfetch/small.jsonc
 fi

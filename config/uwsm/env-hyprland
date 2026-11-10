@@ -1,14 +1,6 @@
-# Sourced by uwsm's environment preloader (/bin/sh) before the compositor
-# starts. That is the only moment AQ_DRM_DEVICES still has any effect --
-# aquamarine reads it when it opens the DRM backend, so changing it later,
-# or from hyprland.lua, does nothing.
-#
-# Mode lives in ~/.config/uwsm/gpu-mode, written by the `gpu-mode` command:
-#   igpu    integrated only, so the dGPU can reach runtime D3 (~4.4W idle)
-#   hybrid  integrated first but dGPU kept open, for monitors wired to it
-#
-# Nothing is exported unless an integrated + NVIDIA pair is positively
-# identified, so on any other machine Hyprland keeps its default behaviour.
+# Sourced by uwsm before Hyprland; the only point AQ_DRM_DEVICES takes effect.
+# Mode from ~/.config/uwsm/gpu-mode: igpu (dGPU can sleep) | hybrid (dGPU kept open).
+# No-op unless an iGPU + NVIDIA pair is found.
 
 _gpu_mode=igpu
 _gpu_mode_file="${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/gpu-mode"
@@ -38,13 +30,7 @@ elif [ -n "$_igpu" ] && [ -n "$_dgpu" ]; then
 	*)
 		export AQ_DRM_DEVICES="$_igpu"
 
-		# Picking the render device is not enough. libglvnd still loads
-		# libEGL_nvidia into every GL client, the compositor included, and
-		# that alone opens /dev/nvidia0 and pins the dGPU out of runtime D3
-		# with nothing ever rendering on it. The NVIDIA Vulkan ICD does the
-		# same when Chromium enumerates GPUs at startup. Filter both by
-		# exclusion rather than naming mesa/intel, so this holds on other
-		# hardware. prime-run puts all of it back for offloaded apps.
+		# Hide NVIDIA EGL/Vulkan, which keep the dGPU awake; prime-run restores them.
 		_egl=
 		for _f in /usr/share/glvnd/egl_vendor.d/*.json; do
 			case ${_f##*/} in *nvidia*) continue ;; esac

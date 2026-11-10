@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
-# Author: JialaChang & Claude
+# Author: JialaChang
 # Toggle matugen's light/dark scheme for the wallpaper currently in use.
 
 MODE_FILE="$HOME/.cache/theme_mode"

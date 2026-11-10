@@ -5,8 +5,7 @@
  *
  */
 
-/* Layout comes from swaync's defaults; the theme files only restyle it.
-   host.css goes last so its per-machine sizes win. */
+/* swaync's default layout, restyled; host.css last so its sizes win. */
 @import url("/etc/xdg/swaync/style.css");
 @import url("colors-swaync.css");
 @import url("themes/matugen-nc/notifications.css");
