@@ -77,10 +77,6 @@ alias ff='clear && fastfetch -c ~/.config/fastfetch/big.jsonc'
 alias ffs='clear && fastfetch -c ~/.config/fastfetch/small.jsonc'
 alias lgit='lazygit'
 
-alias rofi='rofi -show drun -theme ~/.config/rofi/launchers/type-1/style-7.rasi'
-alias powermenu='~/.config/rofi/applets/bin/powermenu.sh'
-alias screenshot='~/.config/rofi/applets/bin/screenshot.sh'
-
 # Functions
 nv() { neovide "$@" & disown; }
 icat() { command kitty +kitten icat "$@"; }

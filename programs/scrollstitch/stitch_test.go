@@ -146,6 +146,19 @@ func framesFrom(m *image.RGBA, frameH int, tops []int, noise int, seed int64) []
 	return out
 }
 
+// withFixedBars paints the same header and footer over every frame, the way a
+// sticky navbar and bottom bar sit on top of a scrolling page.
+func withFixedBars(raw []byte, w, frameH int, header, footer *image.RGBA) []byte {
+	frameSize := w * frameH * 4
+	hh, fh := header.Bounds().Dy(), footer.Bounds().Dy()
+	for off := 0; off < len(raw); off += frameSize {
+		frame := raw[off : off+frameSize]
+		copy(frame, header.Pix[:hh*w*4])
+		copy(frame[(frameH-fh)*w*4:], footer.Pix[:fh*w*4])
+	}
+	return raw
+}
+
 // --- running and asserting -------------------------------------------------
 
 func run(t *testing.T, raw []byte, w, frameH int) (*image.RGBA, stitchStats) {
@@ -236,7 +249,87 @@ func TestPageWithFlatMarginsScrolls(t *testing.T) {
 	const w, frameH, n, step, margin = 320, 240, 25, 60, 30
 	tops := uniformTops(n, step)
 	master := pageMaster(w, tops[n-1]+frameH, margin, 23)
-	got, _ := run(t, framesFrom(master, frameH, tops, 0, 24), w, frameH)
+	got, st := run(t, framesFrom(master, frameH, tops, 0, 24), w, frameH)
+	wantMaster(t, got, master, tops[n-1]+frameH)
+	if st.header != 0 || st.footer != 0 {
+		t.Errorf("page margins read as fixed bars: header %d, footer %d", st.header, st.footer)
+	}
+}
+
+// A sticky header and footer must appear once, at the ends, with the page
+// scrolling continuously between them instead of a footer stamped on every piece.
+func TestFixedHeaderAndFooter(t *testing.T) {
+	const w, frameH, n, step, hh, fh = 320, 240, 25, 40, 40, 30
+	tops := uniformTops(n, step)
+	master := randomMaster(w, tops[n-1]+frameH, 31)
+	header := randomMaster(w, hh, 32)
+	footer := randomMaster(w, fh, 33)
+	raw := withFixedBars(framesFrom(master, frameH, tops, 0, 34), w, frameH, header, footer)
+
+	got, st := run(t, raw, w, frameH)
+	if st.header != hh || st.footer != fh {
+		t.Fatalf("fixed bars = %d/%d, want %d/%d", st.header, st.footer, hh, fh)
+	}
+	// Expected: header, then the page rows the bars never covered at the end, then footer.
+	wantH := tops[n-1] + frameH
+	want := image.NewRGBA(image.Rect(0, 0, w, wantH))
+	copy(want.Pix, master.Pix[:wantH*w*4])
+	copy(want.Pix, header.Pix)
+	copy(want.Pix[(wantH-fh)*w*4:], footer.Pix)
+	wantMaster(t, got, want, wantH)
+}
+
+// A recording opens on a coarse keyframe that the encoder only sharpens a frame
+// later, so the fixed bars in frame 0 differ from every later copy of themselves.
+// One dissenting pair must not hide them: this is what stamped the footer onto
+// every piece of a real capture.
+func TestFixedBarsSurviveCoarseFirstFrame(t *testing.T) {
+	const w, frameH, n, step, hh, fh = 320, 240, 25, 40, 40, 30
+	tops := uniformTops(n, step)
+	master := randomMaster(w, tops[n-1]+frameH, 37)
+	header := randomMaster(w, hh, 38)
+	footer := randomMaster(w, fh, 39)
+	raw := withFixedBars(framesFrom(master, frameH, tops, 0, 40), w, frameH, header, footer)
+
+	rng := rand.New(rand.NewSource(41))
+	for i := 0; i < w*frameH*4; i++ {
+		if i%4 == 3 {
+			continue // alpha
+		}
+		v := int(raw[i]) + rng.Intn(9) - 4
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		raw[i] = byte(v)
+	}
+
+	got, st := run(t, raw, w, frameH)
+	if st.header != hh || st.footer != fh {
+		t.Fatalf("fixed bars = %d/%d, want %d/%d", st.header, st.footer, hh, fh)
+	}
+	wantH := tops[n-1] + frameH
+	if h := got.Bounds().Dy(); h != wantH {
+		t.Fatalf("height = %d, want %d", h, wantH)
+	}
+	// The footer comes from the last placed frame, so it is the clean copy.
+	if !bytes.Equal(got.Pix[(wantH-fh)*got.Stride:], footer.Pix) {
+		t.Error("footer rows differ from the fixed footer")
+	}
+}
+
+// Blank space at the top of a page can sit still across every warmup pair and
+// get read as a header. That costs search range, never content: those rows are
+// still the first frame's top, and the result must match the page exactly.
+func TestBlankTopMisreadAsHeaderIsHarmless(t *testing.T) {
+	const w, frameH, n, step, margin = 320, 240, 30, 10, 120
+	tops := uniformTops(n, step)
+	master := pageMaster(w, tops[n-1]+frameH, margin, 35)
+	got, st := run(t, framesFrom(master, frameH, tops, 0, 36), w, frameH)
+	if st.header == 0 {
+		t.Fatal("blank top was not taken for a header; the test no longer covers this case")
+	}
 	wantMaster(t, got, master, tops[n-1]+frameH)
 }
 

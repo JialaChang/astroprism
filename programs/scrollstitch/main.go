@@ -206,17 +206,75 @@ func verifyOffset(prev, curr *image.RGBA, offset int) bool {
 	return float64(sum)/float64(count) <= verifyThreshold
 }
 
+// Changed frames held back to locate fixed rows before stitching starts.
+const bandWarmup = 8
+
+// band is the scrolling content [top, bottom); rows outside it stay put (sticky header/footer).
+type band struct{ top, bottom int }
+
+// rowsUnchanged reports, per row, whether it is the same at the same position in both frames.
+func rowsUnchanged(prev, curr *image.RGBA) []bool {
+	w := prev.Bounds().Dx()
+	h := prev.Bounds().Dy()
+	same := make([]bool, h)
+	for y := 0; y < h; y++ {
+		prow := prev.Pix[y*prev.Stride:]
+		crow := curr.Pix[y*curr.Stride:]
+		var sum int
+		for x := 0; x < w; x++ {
+			sum += absInt(int(prow[x*4+1]) - int(crow[x*4+1]))
+		}
+		same[y] = float64(sum)/float64(w) <= staticThreshold
+	}
+	return same
+}
+
+// detectBand finds the fixed header and footer: rows that stayed put across the scrolled pairs.
+// Overestimating is harmless (the extra rows are content that shows up in other frames),
+// so blank rows that happen to match only cost search range; a band under half the frame is distrusted.
+func detectBand(frames []*image.RGBA) band {
+	h := frames[0].Bounds().Dy()
+	full := band{0, h}
+	if len(frames) < 2 {
+		return full
+	}
+	changed := make([]int, h)
+	for i := 1; i < len(frames); i++ {
+		for y, same := range rowsUnchanged(frames[i-1], frames[i]) {
+			if !same {
+				changed[y]++
+			}
+		}
+	}
+	// A coarse keyframe disturbs fixed rows in the odd pair, so a quarter may dissent.
+	allowed := (len(frames) - 1) / 4
+	top := 0
+	for top < h && changed[top] <= allowed {
+		top++
+	}
+	bottom := h
+	for bottom > top && changed[bottom-1] <= allowed {
+		bottom--
+	}
+	if bottom-top < h/2 {
+		return full
+	}
+	return band{top, bottom}
+}
+
 // stitchStats records what happened to every frame
 type stitchStats struct {
 	read       int // frames after the first
 	unchanged  int // identical to the previous frame
 	ambiguous  int // self-similar content, no distinctive offset
 	weak       int // best offset still matched poorly
-	tooSmall   int // scrolled less than minShift
+	tooSmall   int // best offset sat on the minShift floor, real scroll likely smaller
 	unverified int // profiles agreed but the pixels did not
 	accepted   int
 	atCeiling  int // accepted at the top of the search range
 	maxShift   int
+	header     int // fixed rows kept once at the top
+	footer     int // fixed rows kept once at the bottom
 	offsets    []int
 	truncated  error // stream ended in the middle of a frame
 }
@@ -224,6 +282,9 @@ type stitchStats struct {
 func (s stitchStats) report(out io.Writer, width, height int) {
 	// +1 restore the first frame
 	fmt.Fprintf(out, "stitched %d of %d frames -> %dx%d\n", s.accepted+1, s.read+1, width, height)
+	if s.header > 0 || s.footer > 0 {
+		fmt.Fprintf(out, "fixed header %d px, footer %d px\n", s.header, s.footer)
+	}
 	if dropped := s.read - s.accepted; dropped > 0 {
 		fmt.Fprintf(out, "discarded %d: %d unchanged, %d ambiguous, %d weak, %d tiny, %d mismatch\n",
 			dropped, s.unchanged, s.ambiguous, s.weak, s.tooSmall, s.unverified)
@@ -252,20 +313,59 @@ func (s stitchStats) report(out io.Writer, width, height int) {
 // cannot be placed is skipped rather than guessed at, so the result is always
 // made of content the matcher was confident about.
 func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
-	st := stitchStats{maxShift: int(float64(height) * maxShiftFrac)}
+	var st stitchStats
 
 	first, err := readFrame(r, width, height)
 	if err != nil {
 		return nil, st, fmt.Errorf("read first frame: %w", err)
 	}
 
-	pieces := []*image.RGBA{first}
-	totalHeight := height
-	prevProfile := rowProfile(first)
+	// Hold back the first changed frames to find the fixed rows; repeats are dropped here.
+	warm := []*image.RGBA{first}
+	var warmErr error
+	for len(warm) <= bandWarmup {
+		f, err := readFrame(r, width, height)
+		if err != nil {
+			warmErr = err
+			break
+		}
+		if !frameChanged(warm[len(warm)-1], f) {
+			st.read++
+			st.unchanged++
+			continue
+		}
+		warm = append(warm, f)
+	}
+	b := detectBand(warm)
+	st.header, st.footer = b.top, height-b.bottom
+	st.maxShift = int(float64(b.bottom-b.top) * maxShiftFrac)
+
+	queue := warm[1:]
+	next := func() (*image.RGBA, error) {
+		if len(queue) > 0 {
+			f := queue[0]
+			queue = queue[1:]
+			return f, nil
+		}
+		if warmErr != nil {
+			return nil, warmErr
+		}
+		return readFrame(r, width, height)
+	}
+	// Matching only sees the scrolling band; SubImage shares Pix, so the helpers index it from 0.
+	content := func(f *image.RGBA) *image.RGBA {
+		return f.SubImage(image.Rect(0, b.top, width, b.bottom)).(*image.RGBA)
+	}
+
+	// Rows are taken as they pass mid-band, clear of anything fading in at the band's edges.
+	cut := (b.top + b.bottom) / 2
+	pieces := []*image.RGBA{cropRows(first, 0, cut)}
+	totalHeight := cut
+	prevProfile := rowProfile(content(first))
 	prevFrame := first
 
 	for {
-		curr, err := readFrame(r, width, height)
+		curr, err := next()
 		if err == io.EOF {
 			break
 		}
@@ -277,12 +377,12 @@ func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 		}
 		st.read++
 
-		if !frameChanged(prevFrame, curr) {
+		if !frameChanged(content(prevFrame), content(curr)) {
 			st.unchanged++
 			continue
 		}
 
-		currProfile := rowProfile(curr)
+		currProfile := rowProfile(content(curr))
 		offset, score, ok := findOffset(prevProfile, currProfile)
 		switch {
 		case !ok:
@@ -291,11 +391,12 @@ func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 		case score > errThreshold:
 			st.weak++
 			continue
+		// The search starts at minShift, so landing on it means the real scroll may be smaller.
 		case offset <= minShift:
 			st.tooSmall++
 			continue
 		}
-		if !verifyOffset(prevFrame, curr, offset) {
+		if !verifyOffset(content(prevFrame), content(curr), offset) {
 			st.unverified++
 			continue
 		}
@@ -305,11 +406,20 @@ func stitch(r io.Reader, width, height int) (*image.RGBA, stitchStats, error) {
 		}
 		st.accepted++
 		st.offsets = append(st.offsets, offset)
-		pieces = append(pieces, cropRows(curr, height-offset, height))
+		// Rows about to scroll under the header exist only in prevFrame, so take them there.
+		if gone := b.top + offset; gone > cut {
+			pieces = append(pieces, cropRows(prevFrame, cut, gone))
+			pieces = append(pieces, cropRows(curr, b.top, cut))
+		} else {
+			pieces = append(pieces, cropRows(curr, cut-offset, cut))
+		}
 		totalHeight += offset
 		prevProfile = currProfile
 		prevFrame = curr
 	}
+	// The rest of the last placed frame, footer included: the only one that lines up with the final piece.
+	pieces = append(pieces, cropRows(prevFrame, cut, height))
+	totalHeight += height - cut
 
 	out := image.NewRGBA(image.Rect(0, 0, width, totalHeight))
 	y := 0
@@ -356,9 +466,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "create output:", err)
 		os.Exit(1)
 	}
-	defer f.Close()
 	if err := png.Encode(f, out); err != nil {
+		f.Close()
 		fmt.Fprintln(os.Stderr, "encode png:", err)
+		os.Exit(1)
+	}
+	if err := f.Close(); err != nil {
+		fmt.Fprintln(os.Stderr, "close output:", err)
 		os.Exit(1)
 	}
 	st.report(os.Stderr, width, out.Bounds().Dy())
