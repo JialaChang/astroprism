@@ -104,6 +104,7 @@
     },
     "mpris": {
         "format": "{player_icon}  {dynamic}",
+        "dynamic-order": ["title", "artist"],
         "format-paused": " <i>{dynamic}</i>",
         "player-icons": {
             "default": "",

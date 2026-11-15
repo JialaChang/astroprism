@@ -425,6 +425,14 @@ hl.layer_rule({
 	animation = "slide",
 })
 
+-- its volume side panel fades in beside it
+hl.layer_rule({
+	name = "mpris-popup-volume-anim",
+	match = { namespace = "^mpris-popup-volume$" },
+
+	animation = "fade",
+})
+
 -- swaync slides in from the right edge
 hl.layer_rule({
 	name = "swaync-anim",

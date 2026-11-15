@@ -4,6 +4,7 @@
 // State via playerctl, updates from D-Bus signals rather than polling.
 
 mod art;
+mod audio;
 mod mpris;
 mod ui;
 
@@ -66,9 +67,14 @@ fn main() {
         glib::ControlFlow::Break
     });
 
-    let window = ui::build_window();
+    let (window, subscriber) = ui::build_window();
     window.show_all();
     gtk::main();
+
+    if let Some(mut child) = subscriber {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
 
     let _ = std::fs::remove_file(pidfile_path());
 }

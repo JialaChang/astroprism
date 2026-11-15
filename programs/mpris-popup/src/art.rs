@@ -1,19 +1,19 @@
 // Cover art: fetching, decoding, scaling and rounding.
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::LazyLock;
 use std::time::Duration;
 
 use gdk_pixbuf::Pixbuf;
 use gtk::prelude::*;
 
-use crate::ui::{Shared, Widgets};
-
-pub(crate) const ART_SIZE: i32 = 84;
+const ART_SIZE: i32 = 84;
 /// Corner rounding of the cover art, in pixels
 const ART_RADIUS: f64 = 12.0;
 
 /// "No cover" sentinel; matches no URL, so the next refresh retries.
-pub(crate) const ART_URL_NONE: &str = "\u{0}";
+const ART_URL_NONE: &str = "\u{0}";
 
 /// Scale+crop to fill a size x size square without distorting aspect ratio.
 fn scale_cover(pixbuf: &Pixbuf, size: i32) -> Option<Pixbuf> {
@@ -117,49 +117,92 @@ fn path_from_file_url(url: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-pub(crate) fn set_art(widgets: &Widgets, shared: &Shared, url: &str) {
-    if *shared.art_url.borrow() == url {
-        return;
-    }
-    shared.art_url.replace(url.to_string());
-
-    if url.starts_with("http://") || url.starts_with("https://") {
-        // Fetch on a thread; the old cover stays up meanwhile.
-        let tx = shared.art_tx.clone();
-        let url = url.to_string();
-        std::thread::spawn(move || {
-            let data = fetch_url(&url).unwrap_or_default();
-            let _ = tx.send((url, data));
-        });
-        return;
-    }
-
-    // Local files decode fast enough to stay on the main thread.
-    let pixbuf = if url.starts_with("file://") {
-        Pixbuf::from_file(path_from_file_url(url))
-            .ok()
-            .and_then(|raw| scale_cover(&raw, ART_SIZE))
-    } else {
-        None
-    };
-    apply_art(widgets, shared, url, pixbuf);
+/// The cover image and its loading state.
+#[derive(Clone)]
+pub(crate) struct Art {
+    image: gtk::Image,
+    /// Cover being shown or fetched; skips re-fetches and stale downloads.
+    url: Rc<RefCell<String>>,
+    /// Downloaded cover bytes on their way back to the main thread.
+    tx: glib::Sender<(String, Vec<u8>)>,
 }
 
-/// Paint a cover that has finished loading, or fall back to the placeholder.
-pub(crate) fn apply_art(widgets: &Widgets, shared: &Shared, url: &str, pixbuf: Option<Pixbuf>) {
-    match pixbuf.and_then(|p| round_pixbuf(&p, ART_RADIUS).or(Some(p))) {
-        Some(p) => widgets.art.set_from_pixbuf(Some(&p)),
-        None => {
-            widgets.art.set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
-            // Don't cache a failed download, so it retries next refresh.
-            if !url.is_empty() {
-                shared.art_url.replace(ART_URL_NONE.to_string());
+impl Art {
+    pub(crate) fn new() -> Self {
+        let image = gtk::Image::new();
+        image.set_size_request(ART_SIZE, ART_SIZE);
+        image.set_valign(gtk::Align::Center);
+
+        // Deprecated, but async channels need extra crates; revisit at glib 0.19+.
+        #[allow(deprecated)]
+        let (tx, rx) = glib::MainContext::channel::<(String, Vec<u8>)>(glib::Priority::DEFAULT);
+        let art = Self {
+            image,
+            url: Rc::new(RefCell::new(ART_URL_NONE.to_string())),
+            tx,
+        };
+        {
+            let art = art.clone();
+            rx.attach(None, move |(url, data)| {
+                // Several downloads can be in flight; paint only the one still wanted.
+                if *art.url.borrow() == url {
+                    art.apply(&url, decode_art(&data));
+                }
+                glib::ControlFlow::Continue
+            });
+        }
+        art
+    }
+
+    pub(crate) fn widget(&self) -> &gtk::Image {
+        &self.image
+    }
+
+    pub(crate) fn set(&self, url: &str) {
+        if *self.url.borrow() == url {
+            return;
+        }
+        self.url.replace(url.to_string());
+
+        if url.starts_with("http://") || url.starts_with("https://") {
+            // Fetch on a thread; the old cover stays up meanwhile.
+            let tx = self.tx.clone();
+            let url = url.to_string();
+            std::thread::spawn(move || {
+                let data = fetch_url(&url).unwrap_or_default();
+                let _ = tx.send((url, data));
+            });
+            return;
+        }
+
+        // Local files decode fast enough to stay on the main thread.
+        let pixbuf = if url.starts_with("file://") {
+            Pixbuf::from_file(path_from_file_url(url))
+                .ok()
+                .and_then(|raw| scale_cover(&raw, ART_SIZE))
+        } else {
+            None
+        };
+        self.apply(url, pixbuf);
+    }
+
+    /// Paint a cover that has finished loading, or fall back to the placeholder.
+    fn apply(&self, url: &str, pixbuf: Option<Pixbuf>) {
+        match pixbuf.and_then(|p| round_pixbuf(&p, ART_RADIUS).or(Some(p))) {
+            Some(p) => self.image.set_from_pixbuf(Some(&p)),
+            None => {
+                self.image
+                    .set_from_icon_name(Some("audio-x-generic-symbolic"), gtk::IconSize::Dialog);
+                // Don't cache a failed download, so it retries next refresh.
+                if !url.is_empty() {
+                    self.url.replace(ART_URL_NONE.to_string());
+                }
             }
         }
     }
 }
 
-pub(crate) fn decode_art(data: &[u8]) -> Option<Pixbuf> {
+fn decode_art(data: &[u8]) -> Option<Pixbuf> {
     let loader = gdk_pixbuf::PixbufLoader::new();
     loader.write(data).ok()?;
     loader.close().ok()?;

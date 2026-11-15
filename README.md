@@ -23,7 +23,7 @@
 ##  Features
 
 - **Wallpaper-driven theming** — pick a wallpaper, the whole desktop recolors itself via [matugen](https://github.com/InioX/matugen) (Material You), light or dark
-- **Custom MPRIS popup** — cover art and playback controls, one click from the bar
+- **Custom MPRIS popup** — cover art and playback controls for every open player, plus per-app volume, one click from the bar
 - **Workspace overview** — a fullscreen grid of live window thumbnails
 - **Screenshot applet** — desktop/window/area/timed shots, screen recording, and scroll capture that stitches a scrolling page into one tall PNG
 - **Themed lock screen** — hyprlock recolored from the wallpaper, with hypridle handling the idle dim/lock/blank/suspend schedule

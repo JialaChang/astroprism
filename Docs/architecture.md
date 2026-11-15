@@ -55,13 +55,20 @@ cursor against the panel's rectangle, derived from the layer geometry, `control-
 ## Waybar MPRIS popup
 
 A GTK popup with cover art and playback controls, in Rust under `programs/mpris-popup/` (`art`,
-`mpris`, `ui`). `deploy.sh` builds it and installs it to `~/.local/bin/mpris-popup`, which waybar's
+`audio`, `mpris`, `ui`). `deploy.sh` builds it and installs it to `~/.local/bin/mpris-popup`, which waybar's
 `on-click` runs.
 
-State is signal-driven: `PropertiesChanged` from playerctld, plus `Seeked` for the position MPRIS
-never notifies on. Signal bursts coalesce into one refresh and seek drags are debounced, because every
-`playerctl` call is a fork that would otherwise block the GTK main loop. Cover art is fetched
-off-thread with a timeout and a size cap.
+Every player is listed with one `playerctl -a` call. The main card shows the playing one (playerctld's
+order alone can rank a paused player first); the others sit below as compact rows, and clicking one pins
+it to the card. State is signal-driven: `PropertiesChanged` and `Seeked` from any MPRIS sender, plus
+`NameOwnerChanged` for players coming and going. Signal bursts coalesce into one refresh and seek drags
+are debounced, because every `playerctl` call is a fork that would otherwise block the GTK main loop.
+Cover art is fetched off-thread with a timeout and a size cap.
+
+Volume is per app, not MPRIS `Volume` (which Firefox ignores): `audio.rs` finds the player's PipeWire
+streams through `pactl`, by bus PID or else by app name, and `pactl subscribe` keeps the slider in step
+with outside changes. The slider lives in a second layer surface beside the popup, because a GTK3
+Popover can't draw outside its parent window.
 
 ## Waybar workspaces
 
